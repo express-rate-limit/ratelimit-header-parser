@@ -3,21 +3,29 @@
   "version": "0.1.0",
   "description": "Parse RateLimit headers of various forms, including the combined form from draft 7 of the IETF standard, into a normalized format.",
   "type": "module",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "dist/ratelimit-header-parser.d.mts",
-        "default": "dist/ratelimit-header-parser.mjs"
-      },
-      "require": {
-        "types": "dist/ratelimit-header-parser.d.cts",
-        "default": "dist/ratelimit-header-parser.cjs"
-      }
-    }
-  },
-  "main": "dist/ratelimit-header-parser.cjs",
-  "module": "dist/ratelimit-header-parser.mjs",
-  "types": "dist/ratelimit-header-parser.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.mts",
+				"default": "./dist/index.mjs"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		}
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist/",
+		"tsconfig.json",
+		"package.json",
+		"readme.md",
+		"license.md",
+		"changelog.md"
+	],
   "scripts": {
     "test": "jest"
   },
