@@ -1,22 +1,11 @@
-import { ServerResponse, IncomingHttpHeaders, OutgoingHttpHeaders } from 'node:http'
+import {
+    HeadersObject,
+    RateLimit,
+    RateLimitOptions,
+    ResponseOrHeadersObject
+} from './types'
 
-export type RateLimit = {
-    limit: number,
-    current: number,
-    remaining: number,
-    reset?: Date,
-    // todo: policy
-}
-
-export type RateLimitOptions = {
-    reset?: 'date' | 'unix' | 'seconds' | 'milliseconds',
-}
-
-// node or fetch
-type ResponseObject = ServerResponse | Response; 
-type HeadersObject =  IncomingHttpHeaders | OutgoingHttpHeaders | Headers | Object;
-
-export function parseRateLimit(input: ResponseObject | HeadersObject, options?: RateLimitOptions): RateLimit | undefined {
+export function parseRateLimit(input: ResponseOrHeadersObject, options?: RateLimitOptions): RateLimit | undefined {
     if ('headers' in input && typeof input.headers === 'object' && !Array.isArray(input.headers)) {
         return parseRateLimit(input.headers, options)
     } else if ('getHeaders' in input && typeof input.getHeaders === 'function') {
