@@ -7,9 +7,9 @@ import {
 
 export function parseRateLimit(input: ResponseOrHeadersObject, options?: RateLimitOptions): RateLimit | undefined {
     if ('headers' in input && typeof input.headers === 'object' && !Array.isArray(input.headers)) {
-        return parseRateLimit(input.headers, options)
+        return parseHeadersObject(input.headers, options)
     } else if ('getHeaders' in input && typeof input.getHeaders === 'function') {
-        return parseRateLimit(input.getHeaders(), options)
+        return parseHeadersObject(input.getHeaders(), options)
     } else {
         return parseHeadersObject(input, options)
     }
