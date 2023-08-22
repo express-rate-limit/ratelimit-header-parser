@@ -12,5 +12,8 @@ into a normalized format.
 * [ ] linting
 * [ ] ci
 * [ ] documentation
-* [ ] more tests
 * [ ] publish
+* [ ] better test coverage
+* [ ] test in [Deno](https://deno.com/)
+* [ ] test browsers
+* [ ] test in [React Native](https://reactnative.dev/)
