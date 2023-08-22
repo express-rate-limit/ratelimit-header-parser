@@ -1,3 +1,4 @@
+import { isModuleNamespaceObject } from 'node:util/types'
 import {
     HeadersObject,
     RateLimit,
@@ -24,12 +25,22 @@ function parseHeadersObject(input: HeadersObject, options: RateLimitOptions | un
         prefix = 'ratelimit-'
     } else if (getHeader(input, 'x-ratelimit-remaining')) {
         prefix = 'x-ratelimit-'
+    } else if (getHeader(input, 'x-rate-limit-remaining')) {
+        // twitter - https://developer.twitter.com/en/docs/twitter-api/rate-limits#headers-and-codes
+        prefix = 'x-rate-limit-'
     } else {
-        // todo: handle vendor-specific headers here - see https://github.com/ietf-wg-httpapi/ratelimit-headers/issues/25
+        // todo: handle other vendor-specific headers - see 
+        // https://github.com/ietf-wg-httpapi/ratelimit-headers/issues/25
+        // https://stackoverflow.com/questions/16022624/examples-of-http-api-rate-limiting-http-response-headers
+        // https://github.com/mre/rate-limits/blob/master/src/variants.rs
+        // etc.
         return;
     }
 
     const limit = num(getHeader(input, `${prefix}limit`))
+    // used - https://github.com/reddit-archive/reddit/wiki/API#rules
+    // observed - https://docs.gitlab.com/ee/administration/settings/user_and_ip_rate_limits.html#response-headers
+    const current = num(getHeader(input, `${prefix}used`)) || num(getHeader(input, `${prefix}observed`))
     const remaining = num(getHeader(input, `${prefix}remaining`))
 
     let reset: Date|undefined = undefined;
@@ -49,8 +60,8 @@ function parseHeadersObject(input: HeadersObject, options: RateLimitOptions | un
     }
 
     return {
-        limit,
-        current: limit - remaining,
+        limit: isNaN(limit) ? current + remaining : limit, // reddit omits
+        current: isNaN(current) ? limit - remaining : current, // most omit
         remaining,
         reset
     }
