@@ -11,7 +11,7 @@ describe('parseRateLimitHeaders', () => {
         expect(parseRateLimit(headers)).toMatchObject({
             limit: 100,
             remaining: 70,
-            current: 30,
+            used: 30,
             reset: expect.any(Date) // todo: mock the clock, then match to a specific date
         })
     })
@@ -27,7 +27,7 @@ describe('parseCombinedRateLimitHeader', () => {
         expect(parseCombinedRateLimitHeader('limit=100, remaining=25, reset=5')).toMatchObject({
             limit: 100,
             remaining: 25,
-            current: 75,
+            used: 75,
             reset: expect.any(Date) // todo: mock the clock, then match to a specific date
         })
     })

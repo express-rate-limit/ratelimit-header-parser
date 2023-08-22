@@ -1,10 +1,13 @@
-import { isModuleNamespaceObject } from 'node:util/types'
-import {
-    HeadersObject,
+import type { ServerResponse, IncomingHttpHeaders, OutgoingHttpHeaders } from 'node:http'
+import type {
     RateLimit,
     RateLimitOptions,
-    ResponseOrHeadersObject
 } from './types'
+
+// node or fetch
+export type ResponseObject = ServerResponse | Response; 
+export type HeadersObject =  IncomingHttpHeaders | OutgoingHttpHeaders | Headers | Object;
+export type ResponseOrHeadersObject = ResponseObject | HeadersObject;
 
 export function parseRateLimit(input: ResponseOrHeadersObject, options?: RateLimitOptions): RateLimit | undefined {
     if ('headers' in input && typeof input.headers === 'object' && !Array.isArray(input.headers)) {
@@ -39,8 +42,10 @@ function parseHeadersObject(input: HeadersObject, options: RateLimitOptions | un
 
     const limit = num(getHeader(input, `${prefix}limit`))
     // used - https://github.com/reddit-archive/reddit/wiki/API#rules
+    // used - https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#rate-limit-headers
     // observed - https://docs.gitlab.com/ee/administration/settings/user_and_ip_rate_limits.html#response-headers
-    const current = num(getHeader(input, `${prefix}used`)) || num(getHeader(input, `${prefix}observed`))
+    // note that || is valid here because used should always be at least 1, and || handles NaN correctly, whereas ?? doesn't
+    const used = num(getHeader(input, `${prefix}used`)) || num(getHeader(input, `${prefix}observed`))
     const remaining = num(getHeader(input, `${prefix}remaining`))
 
     let reset: Date|undefined = undefined;
@@ -60,8 +65,8 @@ function parseHeadersObject(input: HeadersObject, options: RateLimitOptions | un
     }
 
     return {
-        limit: isNaN(limit) ? current + remaining : limit, // reddit omits
-        current: isNaN(current) ? limit - remaining : current, // most omit
+        limit: isNaN(limit) ? used + remaining : limit, // reddit omits
+        used: isNaN(used) ? limit - remaining : used, // most omit
         remaining,
         reset
     }
@@ -77,7 +82,7 @@ export function parseCombinedRateLimitHeader(input: string): RateLimit {
     const reset = secondsToDate(resetSeconds);
     return {
         limit,
-        current: limit - remaining,
+        used: limit - remaining,
         remaining,
         reset,
     }
