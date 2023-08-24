@@ -1,2 +1,16 @@
 package.json
 package-lock.json
+
+# gitignore contents below:
+
+node_modules/
+dist/
+coverage/
+
+.vscode/
+.idea/
+
+*.log
+*.tmp
+*.bak
+*.tgz

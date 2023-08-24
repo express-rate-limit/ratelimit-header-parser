@@ -33,7 +33,7 @@
     "build:types": "dts-bundle-generator --out-file=dist/index.d.ts source/index.ts && cp dist/index.d.ts dist/index.d.cts && cp dist/index.d.ts dist/index.d.mts",
     "compile": "run-s clean build:*",
     "lint:code": "xo",
-    "lint:rest": "prettier --ignore-path .gitignore --ignore-unknown --check .",
+    "lint:rest": "prettier --ignore-unknown --check .",
     "lint": "run-s lint:*",
     "format:code": "npm run lint:code -- --fix",
     "format:rest": "npm run lint:rest -- --write .",
@@ -120,6 +120,6 @@
   "prettier": "@express-rate-limit/prettier",
   "lint-staged": {
     "{source,test}/**/*.ts": "xo --fix",
-    "**/*.{json,yaml,md}": "prettier --ignore-path .gitignore --ignore-unknown --write "
+    "**/*.{json,yaml,md}": "prettier --ignore-unknown --write "
   }
 }
