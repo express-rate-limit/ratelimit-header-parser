@@ -8,8 +8,8 @@ into a normalized format.
 
 ### Todo
 
-* [ ] transpiling
-* [ ] linting
+* [x] transpiling
+* [x] linting
 * [ ] ci
 * [ ] documentation
 * [ ] publish
