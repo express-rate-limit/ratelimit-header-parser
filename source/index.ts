@@ -1,2 +1,2 @@
-export * from './types'
-export { parseRateLimit } from './ratelimit-header-parser'
+export * from './types.js'
+export { parseRateLimit } from './ratelimit-header-parser.js'
