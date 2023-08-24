@@ -102,8 +102,10 @@ function num(input: string | number | undefined): number {
 function getHeader(headers: HeadersObject, name: string): string | undefined {
     if ('get' in headers && typeof headers.get === 'function') {
         return headers.get(name) ?? undefined // returns null if missing, but everything else is undefined for missing values
+    } else if (name in headers && typeof (headers as any)[name] == 'string') {
+        return (headers as any)[name]
     }
-    return headers[name]
+    return undefined
 }
 
 function parseResetDate(resetRaw: string): Date {
