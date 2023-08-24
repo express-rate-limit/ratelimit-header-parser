@@ -11,7 +11,7 @@ export type HeadersObject =
 	| IncomingHttpHeaders
 	| OutgoingHttpHeaders
 	| Headers
-	| { [key: string]: unknown }
+	| { [key: string]: string | string[] }
 export type ResponseOrHeadersObject = ResponseObject | HeadersObject
 
 export function parseRateLimit(
@@ -70,23 +70,42 @@ function parseHeadersObject(
 	let reset: Date | undefined
 	const resetRaw = getHeader(input, `${prefix}reset`)
 	const resetType = options?.reset
-	if (resetType == 'date') reset = parseResetDate(resetRaw ?? '')
-	else if (resetType == 'unix') reset = parseResetUnix(resetRaw ?? '')
-	else if (resetType == 'seconds') reset = parseResetSeconds(resetRaw ?? '')
-	else if (resetType == 'milliseconds')
-		reset = parseResetMilliseconds(resetRaw ?? '')
-	else if (resetRaw) reset = parseResetAuto(resetRaw)
-	else {
-		// Fallback to retry-after
-		const retryAfter = getHeader(input, 'retry-after')
-		if (retryAfter) {
-			reset = parseResetUnix(retryAfter)
+	switch (resetType) {
+		case 'date': {
+			reset = parseResetDate(resetRaw ?? '')
+			break
+		}
+
+		case 'unix': {
+			reset = parseResetUnix(resetRaw ?? '')
+			break
+		}
+
+		case 'seconds': {
+			reset = parseResetSeconds(resetRaw ?? '')
+			break
+		}
+
+		case 'milliseconds': {
+			reset = parseResetMilliseconds(resetRaw ?? '')
+			break
+		}
+
+		default: {
+			if (resetRaw) reset = parseResetAuto(resetRaw)
+			else {
+				// Fallback to retry-after
+				const retryAfter = getHeader(input, 'retry-after')
+				if (retryAfter) {
+					reset = parseResetUnix(retryAfter)
+				}
+			}
 		}
 	}
 
 	return {
-		limit: isNaN(limit) ? used + remaining : limit, // Reddit omits
-		used: isNaN(used) ? limit - remaining : used, // Most omit
+		limit: Number.isNaN(limit) ? used + remaining : limit, // Reddit omits
+		used: Number.isNaN(used) ? limit - remaining : used, // Most omit
 		remaining,
 		reset,
 	}
@@ -125,7 +144,7 @@ function getHeader(headers: HeadersObject, name: string): string | undefined {
 	}
 
 	if (name in headers && typeof (headers as any)[name] === 'string') {
-		return (headers as any)[name]
+		return (headers as any)[name] as string
 	}
 
 	return undefined
