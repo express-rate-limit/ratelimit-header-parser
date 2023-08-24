@@ -30,7 +30,7 @@ export function parseRateLimit(
 		return parseHeadersObject(input.getHeaders(), options)
 	}
 
-	return parseHeadersObject(input, options)
+	return parseHeadersObject(input as HeadersObject, options)
 }
 
 function parseHeadersObject(
@@ -57,15 +57,15 @@ function parseHeadersObject(
 		return
 	}
 
-	const limit = number_(getHeader(input, `${prefix}limit`))
+	const limit = toInt(getHeader(input, `${prefix}limit`))
 	// Used - https://github.com/reddit-archive/reddit/wiki/API#rules
 	// used - https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#rate-limit-headers
 	// observed - https://docs.gitlab.com/ee/administration/settings/user_and_ip_rate_limits.html#response-headers
 	// note that || is valid here because used should always be at least 1, and || handles NaN correctly, whereas ?? doesn't
 	const used =
-		number_(getHeader(input, `${prefix}used`)) ||
-		number_(getHeader(input, `${prefix}observed`))
-	const remaining = number_(getHeader(input, `${prefix}remaining`))
+		toInt(getHeader(input, `${prefix}used`)) ||
+		toInt(getHeader(input, `${prefix}observed`))
+	const remaining = toInt(getHeader(input, `${prefix}remaining`))
 
 	let reset: Date | undefined
 	const resetRaw = getHeader(input, `${prefix}reset`)
@@ -115,9 +115,9 @@ const reLimit = /limit\s*=\s*(\d+)/i
 const reRemaining = /remaining\s*=\s*(\d+)/i
 const reReset = /reset\s*=\s*(\d+)/i
 export function parseCombinedRateLimitHeader(input: string): RateLimit {
-	const limit = number_(reLimit.exec(input)?.[1])
-	const remaining = number_(reRemaining.exec(input)?.[1])
-	const resetSeconds = number_(reReset.exec(input)?.[1])
+	const limit = toInt(reLimit.exec(input)?.[1])
+	const remaining = toInt(reRemaining.exec(input)?.[1])
+	const resetSeconds = toInt(reReset.exec(input)?.[1])
 	const reset = secondsToDate(resetSeconds)
 	return {
 		limit,
@@ -133,7 +133,7 @@ function secondsToDate(seconds: number): Date {
 	return d
 }
 
-function number_(input: string | number | undefined): number {
+function toInt(input: string | number | undefined): number {
 	if (typeof input === 'number') return input
 	return Number.parseInt(input ?? '', 10)
 }
@@ -156,17 +156,17 @@ function parseResetDate(resetRaw: string): Date {
 }
 
 function parseResetUnix(resetRaw: string | number): Date {
-	const resetNumber = number_(resetRaw)
+	const resetNumber = toInt(resetRaw)
 	return new Date(resetNumber * 1000)
 }
 
 function parseResetSeconds(resetRaw: string | number): Date {
-	const resetNumber = number_(resetRaw)
+	const resetNumber = toInt(resetRaw)
 	return secondsToDate(resetNumber)
 }
 
 function parseResetMilliseconds(resetRaw: string | number): Date {
-	const resetNumber = number_(resetRaw)
+	const resetNumber = toInt(resetRaw)
 	return secondsToDate(resetNumber / 1000)
 }
 
@@ -177,7 +177,7 @@ function parseResetAuto(resetRaw: string): Date {
 		return parseResetDate(resetRaw)
 	}
 
-	const resetNumber = number_(resetRaw)
+	const resetNumber = toInt(resetRaw)
 	// Looks like a unix timestamp
 	if (resetNumber && resetNumber > 1_000_000_000) {
 		// Sometime in 2001
