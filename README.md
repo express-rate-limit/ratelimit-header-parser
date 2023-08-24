@@ -10,7 +10,7 @@ into a normalized format.
 
 - [x] transpiling
 - [x] linting
-- [ ] ci
+- [x] ci
 - [ ] documentation
 - [ ] publish
 - [ ] better test coverage
