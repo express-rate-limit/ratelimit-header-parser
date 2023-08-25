@@ -115,7 +115,8 @@
           "@typescript-eslint/no-unsafe-argument": 0
         }
       }
-    ]
+    ],
+    "ignores": ["examples/"]
   },
   "prettier": "@express-rate-limit/prettier",
   "lint-staged": {
