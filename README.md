@@ -1,6 +1,7 @@
 # ratelimit-header-parser
 
 [![CI](https://github.com/express-rate-limit/ratelimit-header-parser/actions/workflows/ci.yml/badge.svg)](https://github.com/express-rate-limit/ratelimit-header-parser/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/ratelimit-header-parser.svg)](https://npmjs.org/package/ratelimit-header-parser 'View this project on NPM')
 
 Parse RateLimit headers of various forms into a normalized format. Supports the
 combined form from
