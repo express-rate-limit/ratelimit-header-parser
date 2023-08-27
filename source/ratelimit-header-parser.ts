@@ -1,51 +1,60 @@
+// /source/ratelimit-header-parser.ts
+// The parser and associated functions
+
 import type {
-	ServerResponse,
-	IncomingHttpHeaders,
-	OutgoingHttpHeaders,
-} from 'node:http'
-import type { RateLimit, RateLimitOptions } from './types'
+	ResponseObject,
+	HeadersObject,
+	RateLimitInfo,
+	ParserOptions,
+} from './types'
 
-// Node or fetch
-export type ResponseObject = ServerResponse | Response
-export type HeadersObject =
-	| IncomingHttpHeaders
-	| OutgoingHttpHeaders
-	| Headers
-	| { [key: string]: string | string[] }
-export type ResponseOrHeadersObject = ResponseObject | HeadersObject
-
+/**
+ * Parses the passed response/headers object and returns rate limit information.
+ *
+ * @param input {ResponseObject | HeadersObject} - The node/fetch-style response/headers object.
+ * @param passedOptions {Partial<ParserOptions> | undefined} - The configuration for the parser.
+ *
+ * @returns {RateLimitInfo | undefined} - The rate limit information parsed from the headers.
+ */
 export function parseRateLimit(
-	input: ResponseOrHeadersObject,
-	options?: RateLimitOptions,
-): RateLimit | undefined {
+	input: ResponseObject | HeadersObject,
+	passedOptions?: Partial<ParserOptions>,
+): RateLimitInfo | undefined {
+	// Default to no configuration.
+	const options = passedOptions ?? {}
+
+	// Get the headers object from the passed input.
+	let headers: HeadersObject
 	if (
 		'headers' in input &&
 		typeof input.headers === 'object' &&
 		!Array.isArray(input.headers)
-	) {
-		return parseHeadersObject(input.headers, options)
-	}
+	)
+		headers = input.headers
+	else if ('getHeaders' in input && typeof input.getHeaders === 'function')
+		headers = input.getHeaders()
+	else headers = input as HeadersObject
 
-	if ('getHeaders' in input && typeof input.getHeaders === 'function') {
-		return parseHeadersObject(input.getHeaders(), options)
-	}
-
-	return parseHeadersObject(input as HeadersObject, options)
+	// Parse the headers.
+	return parseHeaders(headers, options)
 }
 
-function parseHeadersObject(
-	input: HeadersObject,
-	options: RateLimitOptions | undefined,
-): RateLimit | undefined {
-	const combined = getHeader(input, 'ratelimit')
+/**
+ * The internal parser function.
+ */
+function parseHeaders(
+	headers: HeadersObject,
+	options: Partial<ParserOptions>,
+): RateLimitInfo | undefined {
+	const combined = getHeader(headers, 'ratelimit')
 	if (combined) return parseCombinedRateLimitHeader(combined)
 
 	let prefix
-	if (getHeader(input, 'ratelimit-remaining')) {
+	if (getHeader(headers, 'ratelimit-remaining')) {
 		prefix = 'ratelimit-'
-	} else if (getHeader(input, 'x-ratelimit-remaining')) {
+	} else if (getHeader(headers, 'x-ratelimit-remaining')) {
 		prefix = 'x-ratelimit-'
-	} else if (getHeader(input, 'x-rate-limit-remaining')) {
+	} else if (getHeader(headers, 'x-rate-limit-remaining')) {
 		// Twitter - https://developer.twitter.com/en/docs/twitter-api/rate-limits#headers-and-codes
 		prefix = 'x-rate-limit-'
 	} else {
@@ -57,18 +66,18 @@ function parseHeadersObject(
 		return
 	}
 
-	const limit = toInt(getHeader(input, `${prefix}limit`))
+	const limit = toInt(getHeader(headers, `${prefix}limit`))
 	// Used - https://github.com/reddit-archive/reddit/wiki/API#rules
 	// used - https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#rate-limit-headers
 	// observed - https://docs.gitlab.com/ee/administration/settings/user_and_ip_rate_limits.html#response-headers
 	// note that || is valid here because used should always be at least 1, and || handles NaN correctly, whereas ?? doesn't
 	const used =
-		toInt(getHeader(input, `${prefix}used`)) ||
-		toInt(getHeader(input, `${prefix}observed`))
-	const remaining = toInt(getHeader(input, `${prefix}remaining`))
+		toInt(getHeader(headers, `${prefix}used`)) ||
+		toInt(getHeader(headers, `${prefix}observed`))
+	const remaining = toInt(getHeader(headers, `${prefix}remaining`))
 
 	let reset: Date | undefined
-	const resetRaw = getHeader(input, `${prefix}reset`)
+	const resetRaw = getHeader(headers, `${prefix}reset`)
 	const resetType = options?.reset
 	switch (resetType) {
 		case 'date': {
@@ -95,7 +104,7 @@ function parseHeadersObject(
 			if (resetRaw) reset = parseResetAuto(resetRaw)
 			else {
 				// Fallback to retry-after
-				const retryAfter = getHeader(input, 'retry-after')
+				const retryAfter = getHeader(headers, 'retry-after')
 				if (retryAfter) {
 					reset = parseResetUnix(retryAfter)
 				}
@@ -114,10 +123,10 @@ function parseHeadersObject(
 const reLimit = /limit\s*=\s*(\d+)/i
 const reRemaining = /remaining\s*=\s*(\d+)/i
 const reReset = /reset\s*=\s*(\d+)/i
-export function parseCombinedRateLimitHeader(input: string): RateLimit {
-	const limit = toInt(reLimit.exec(input)?.[1])
-	const remaining = toInt(reRemaining.exec(input)?.[1])
-	const resetSeconds = toInt(reReset.exec(input)?.[1])
+export function parseCombinedRateLimitHeader(header: string): RateLimitInfo {
+	const limit = toInt(reLimit.exec(header)?.[1])
+	const remaining = toInt(reRemaining.exec(header)?.[1])
+	const resetSeconds = toInt(reReset.exec(header)?.[1])
 	const reset = secondsToDate(resetSeconds)
 	return {
 		limit,
