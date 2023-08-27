@@ -1,4 +1,4 @@
-// source/utilities.ts
+// /source/utilities.ts
 // The utility functions for the library
 
 /**
