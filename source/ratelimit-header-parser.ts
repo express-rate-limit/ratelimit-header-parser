@@ -7,6 +7,7 @@ import type {
 	RateLimitInfo,
 	ParserOptions,
 } from './types'
+import { secondsToDate, toInt } from './utilities.js'
 
 /**
  * Parses the passed response/headers object and returns rate limit information.
@@ -134,17 +135,6 @@ export function parseCombinedRateLimitHeader(header: string): RateLimitInfo {
 		remaining,
 		reset,
 	}
-}
-
-function secondsToDate(seconds: number): Date {
-	const d = new Date()
-	d.setSeconds(d.getSeconds() + seconds)
-	return d
-}
-
-function toInt(input: string | number | undefined): number {
-	if (typeof input === 'number') return input
-	return Number.parseInt(input ?? '', 10)
 }
 
 function getHeader(headers: HeadersObject, name: string): string | undefined {
