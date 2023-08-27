@@ -42,9 +42,29 @@ jobs:
         run: |
           npm ci
           npm run test:lib
+  test-examples:
+    name: Test (Examples)
+    strategy:
+      matrix:
+        node-version: [lts/*]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+      - name: Use Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Run tests
+        run: |
+          npm ci
+          cd examples/
+          npm ci
+          npm test
   publish:
     name: Publish
-    needs: [lint, test-library]
+    needs: [lint, test-library, test-examples]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:

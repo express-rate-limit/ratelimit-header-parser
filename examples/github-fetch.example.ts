@@ -1,3 +1,6 @@
+// /examples/github-fetch.example.ts
+// Uses `fetch` to hit the Github API.
+
 import { parseRateLimit } from 'ratelimit-header-parser'
 
 const response = await fetch(
