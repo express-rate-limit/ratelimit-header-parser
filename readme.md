@@ -1,10 +1,12 @@
-# <div align="center"> `RateLimit` Header Parser </div>
+# <div align="center"> RateLimit Header Parser </div>
 
 <div align="center">
 
 [![tests](https://github.com/express-rate-limit/ratelimit-header-parser/actions/workflows/ci.yaml/badge.svg)](https://github.com/express-rate-limit/ratelimit-header-parser/actions/workflows/ci.yaml)
 [![npm version](https://img.shields.io/npm/v/ratelimit-header-parser.svg)](https://npmjs.org/package/ratelimit-header-parser 'View this project on NPM')
 [![npm downloads](https://img.shields.io/npm/dm/ratelimit-header-parser)](https://www.npmjs.com/package/ratelimit-header-parser)
+
+</div>
 
 This library parses `RateLimit` headers of various forms into a normalized
 format. It supports the combined format specified in
@@ -13,8 +15,6 @@ of the
 [IETF Rate Limit Headers standard](https://github.com/ietf-wg-httpapi/ratelimit-headers),
 the uncombined `RateLimit-*` format of earlier drafts, traditional
 `X-RateLimit-*` headers, and a few other formats.
-
-</div>
 
 ## Usage
 
