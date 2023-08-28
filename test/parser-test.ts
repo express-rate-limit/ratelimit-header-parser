@@ -1,6 +1,9 @@
+// /test/parser-test.ts
+// Tests for the public API.
+
 import { describe, it, expect } from '@jest/globals'
 import {
-	parseCombinedRateLimitHeader,
+	parseDraft7Header,
 	parseRateLimit,
 } from '../source/ratelimit-header-parser.js'
 
@@ -45,15 +48,15 @@ describe('parseRateLimitHeaders', () => {
 
 // Todo: test parseResetAuto with various formats
 
-describe('parseCombinedRateLimitHeader', () => {
+describe('parseDraft7Header', () => {
 	it('should parse a combined header', () => {
-		expect(
-			parseCombinedRateLimitHeader('limit=100, remaining=25, reset=5'),
-		).toMatchObject({
-			limit: 100,
-			remaining: 25,
-			used: 75,
-			reset: expect.any(Date), // Todo: mock the clock, then match to a specific date
-		})
+		expect(parseDraft7Header('limit=100, remaining=25, reset=5')).toMatchObject(
+			{
+				limit: 100,
+				remaining: 25,
+				used: 75,
+				reset: expect.any(Date), // Todo: mock the clock, then match to a specific date
+			},
+		)
 	})
 })

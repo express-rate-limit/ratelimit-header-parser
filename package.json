@@ -51,7 +51,7 @@
     "format:code": "xo --fix",
     "format:rest": "prettier --ignore-unknown --write .",
     "format": "run-s format:*",
-    "test:lib": "jest --config config/jest.json",
+    "test:lib": "cross-env NODE_NO_WARNINGS=1 NODE_OPTIONS=--experimental-vm-modules jest --config config/jest.json",
     "test": "run-s lint test:lib",
     "pre-commit": "lint-staged",
     "prepare": "run-s compile && husky install config/husky"
@@ -62,6 +62,7 @@
     "@jest/globals": "29.6.3",
     "@jest/types": "29.6.3",
     "@types/node": "20.5.1",
+    "cross-env": "7.0.3",
     "del-cli": "5.0.0",
     "dts-bundle-generator": "8.0.1",
     "esbuild": "0.19.2",

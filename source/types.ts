@@ -1,5 +1,5 @@
 // /source/types.ts
-// All the types used by this package
+// All the types used by this package.
 
 import type {
 	ServerResponse,

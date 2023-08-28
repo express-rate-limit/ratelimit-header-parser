@@ -1,5 +1,5 @@
 // /source/ratelimit-header-parser.ts
-// The parser and associated functions
+// The parser and associated functions.
 
 import type {
 	ResponseObject,
@@ -7,7 +7,7 @@ import type {
 	RateLimitInfo,
 	ParserOptions,
 } from './types'
-import { secondsToDate, toInt } from './utilities.js'
+import { secondsToDate, toInt, getHeader } from './utilities.js'
 
 /**
  * Parses the passed response/headers object and returns rate limit information.
@@ -41,94 +41,89 @@ export function parseRateLimit(
 }
 
 /**
- * The internal parser function.
+ * The header parser function.
  */
-function parseHeaders(
+const parseHeaders = (
 	headers: HeadersObject,
 	options: Partial<ParserOptions>,
-): RateLimitInfo | undefined {
-	const combined = getHeader(headers, 'ratelimit')
-	if (combined) return parseCombinedRateLimitHeader(combined)
+): RateLimitInfo | undefined => {
+	// If the header is a combined header, parse it according to the 7th draft of
+	// the IETF spec.
+	const draft7Header = getHeader(headers, 'ratelimit')
+	if (draft7Header) return parseDraft7Header(draft7Header)
 
-	let prefix
-	if (getHeader(headers, 'ratelimit-remaining')) {
-		prefix = 'ratelimit-'
-	} else if (getHeader(headers, 'x-ratelimit-remaining')) {
-		prefix = 'x-ratelimit-'
-	} else if (getHeader(headers, 'x-rate-limit-remaining')) {
-		// Twitter - https://developer.twitter.com/en/docs/twitter-api/rate-limits#headers-and-codes
-		prefix = 'x-rate-limit-'
-	} else {
-		// Todo: handle other vendor-specific headers - see
-		// https://github.com/ietf-wg-httpapi/ratelimit-headers/issues/25
-		// https://stackoverflow.com/questions/16022624/examples-of-http-api-rate-limiting-http-response-headers
-		// https://github.com/mre/rate-limits/blob/master/src/variants.rs
-		// etc.
-		return
-	}
+	// Find the prefix for the headers, e.g., `X-RateLimit-`, `RateLimit-`, etc.
+	const prefix = findPrefix(headers)
+	if (!prefix) return
 
 	const limit = toInt(getHeader(headers, `${prefix}limit`))
-	// Used - https://github.com/reddit-archive/reddit/wiki/API#rules
-	// used - https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#rate-limit-headers
-	// observed - https://docs.gitlab.com/ee/administration/settings/user_and_ip_rate_limits.html#response-headers
-	// note that || is valid here because used should always be at least 1, and || handles NaN correctly, whereas ?? doesn't
-	const used =
-		toInt(getHeader(headers, `${prefix}used`)) ||
-		toInt(getHeader(headers, `${prefix}observed`))
+
+	// Note that `||` is valid here because used should always be at least 1, and
+	// `||` handles NaN correctly, whereas `??` doesn't.
+	const used = toInt(
+		getHeader(headers, `${prefix}used`) || // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
+			getHeader(headers, `${prefix}observed`),
+	)
 	const remaining = toInt(getHeader(headers, `${prefix}remaining`))
 
-	let reset: Date | undefined
-	const resetRaw = getHeader(headers, `${prefix}reset`)
-	const resetType = options?.reset
-	switch (resetType) {
-		case 'date': {
-			reset = parseResetDate(resetRaw ?? '')
-			break
-		}
-
-		case 'unix': {
-			reset = parseResetUnix(resetRaw ?? '')
-			break
-		}
-
-		case 'seconds': {
-			reset = parseResetSeconds(resetRaw ?? '')
-			break
-		}
-
-		case 'milliseconds': {
-			reset = parseResetMilliseconds(resetRaw ?? '')
-			break
-		}
-
-		default: {
-			if (resetRaw) reset = parseResetAuto(resetRaw)
-			else {
-				// Fallback to retry-after
-				const retryAfter = getHeader(headers, 'retry-after')
-				if (retryAfter) {
-					reset = parseResetUnix(retryAfter)
-				}
-			}
-		}
-	}
+	// Try parsing the reset header passed in the response.
+	let reset = parseResetHeader(getHeader(headers, `${prefix}reset`), options)
+	// If the reset header is not set, fallback to the retry-after header.
+	const retryAfter = getHeader(headers, 'retry-after')
+	if (!reset && retryAfter) reset = parseResetUnix(retryAfter)
 
 	return {
-		limit: Number.isNaN(limit) ? used + remaining : limit, // Reddit omits
-		used: Number.isNaN(used) ? limit - remaining : used, // Most omit
+		limit: Number.isNaN(limit) ? used + remaining : limit, // Reddit omits this header.
+		used: Number.isNaN(used) ? limit - remaining : used, // Most APIs omit this header.
 		remaining,
 		reset,
 	}
 }
 
+/**
+ * Finds the prefix for the rate limit headers, e.g., `X-RateLimit-`,
+ * `RateLimit-`, etc. If none are found, it returns undefined.
+ *
+ * @param headers {HeadersObject} - The headers to search in.
+ *
+ * @returns {string | undefined} - The prefix, if any is found.
+ */
+const findPrefix = (headers: HeadersObject): string | undefined => {
+	// The draft-6 and unofficial rate limit headers.
+	if (getHeader(headers, 'ratelimit-remaining')) return 'ratelimit-'
+	if (getHeader(headers, 'x-ratelimit-remaining')) return 'x-ratelimit-'
+
+	// Twitter - https://developer.twitter.com/en/docs/twitter-api/rate-limits#headers-and-codes
+	if (getHeader(headers, 'x-rate-limit-remaining')) return 'x-rate-limit-'
+
+	// TODO: handle other vendor-specific headers - see
+	// https://github.com/ietf-wg-httpapi/ratelimit-headers/issues/25
+	// https://stackoverflow.com/questions/16022624/examples-of-http-api-rate-limiting-http-response-headers
+	// https://github.com/mre/rate-limits/blob/master/src/variants.rs
+	// etc.
+	return undefined
+}
+
+/**
+ * The regexps used to parse the `RateLimit` header.
+ */
 const reLimit = /limit\s*=\s*(\d+)/i
 const reRemaining = /remaining\s*=\s*(\d+)/i
 const reReset = /reset\s*=\s*(\d+)/i
-export function parseCombinedRateLimitHeader(header: string): RateLimitInfo {
+
+/**
+ * Parses a `RateLimit` header in accordance with the IETF spec's draft 7.
+ *
+ * @param header {string} - The contents of the `RateLimit` header.
+ *
+ * @returns {RateLimitInfo} - The normalised rate limit info.
+ */
+export const parseDraft7Header = (header: string): RateLimitInfo => {
 	const limit = toInt(reLimit.exec(header)?.[1])
 	const remaining = toInt(reRemaining.exec(header)?.[1])
 	const resetSeconds = toInt(reReset.exec(header)?.[1])
 	const reset = secondsToDate(resetSeconds)
+
 	return {
 		limit,
 		used: limit - remaining,
@@ -137,52 +132,86 @@ export function parseCombinedRateLimitHeader(header: string): RateLimitInfo {
 	}
 }
 
-function getHeader(headers: HeadersObject, name: string): string | undefined {
-	if ('get' in headers && typeof headers.get === 'function') {
-		return headers.get(name) ?? undefined // Returns null if missing, but everything else is undefined for missing values
+/**
+ * Parses the `RateLimit-Reset` header's contents and returns a proper `Date`.
+ *
+ * @param header {string} - The header's contents.
+ */
+const parseResetHeader = (
+	passedHeader: string | undefined,
+	options: Partial<ParserOptions>,
+): Date | undefined => {
+	const header = passedHeader ?? ''
+
+	let reset: Date | undefined
+	switch (options?.reset) {
+		case 'date': {
+			reset = parseResetDate(header)
+			break
+		}
+
+		case 'unix': {
+			reset = parseResetUnix(header)
+			break
+		}
+
+		case 'seconds': {
+			reset = parseResetSeconds(header)
+			break
+		}
+
+		case 'milliseconds': {
+			reset = parseResetMilliseconds(header)
+			break
+		}
+
+		default: {
+			reset = header ? parseResetAuto(header) : undefined
+		}
 	}
 
-	if (name in headers && typeof (headers as any)[name] === 'string') {
-		return (headers as any)[name] as string
-	}
-
-	return undefined
+	return reset
 }
 
-function parseResetDate(resetRaw: string): Date {
-	// Todo: take the server's date into account, calculate an offset, then apply that to the current date
-	return new Date(resetRaw)
-}
+/**
+ * Parses the `Date` in the `RateLimit-Reset` header.
+ */
+const parseResetDate = (header: string): Date =>
+	// TODO: take the server's date into account, calculate an offset, then apply that to the current date
+	new Date(header)
 
-function parseResetUnix(resetRaw: string | number): Date {
-	const resetNumber = toInt(resetRaw)
-	return new Date(resetNumber * 1000)
-}
+/**
+ * Parses a unix epoch timestamp pased in the `RateLimit-Reset` header.
+ */
+const parseResetUnix = (header: string | number): Date =>
+	new Date(toInt(header) * 1000)
 
-function parseResetSeconds(resetRaw: string | number): Date {
-	const resetNumber = toInt(resetRaw)
-	return secondsToDate(resetNumber)
-}
+/**
+ * Converts the delta seconds in the `RateLimit-Reset` header to a proper date.
+ */
+const parseResetSeconds = (header: string | number): Date =>
+	secondsToDate(toInt(header))
 
-function parseResetMilliseconds(resetRaw: string | number): Date {
-	const resetNumber = toInt(resetRaw)
-	return secondsToDate(resetNumber / 1000)
-}
+/**
+ * Converts the delta milliseconds in the `RateLimit-Reset` header to a proper date.
+ */
+const parseResetMilliseconds = (header: string | number): Date =>
+	secondsToDate(toInt(header) / 1000)
 
-const reLetters = /[a-z]/i
-function parseResetAuto(resetRaw: string): Date {
-	// If it has any letters, assume it's a date string
-	if (reLetters.test(resetRaw)) {
-		return parseResetDate(resetRaw)
-	}
+/**
+ * Find out what type of time is passed in the `RateLimit-Reset` header, and
+ * parse it into a `Date`.
+ */
+const parseResetAuto = (header: string): Date => {
+	// If it has any letters, assume it's a date string.
+	if (/[a-z]/i.test(header)) return parseResetDate(header)
 
-	const resetNumber = toInt(resetRaw)
-	// Looks like a unix timestamp
-	if (resetNumber && resetNumber > 1_000_000_000) {
+	const resetNumber = toInt(header)
+	// Looks like a unix timestamp, parse it as such.
+	if (resetNumber && resetNumber > 1_000_000_000)
 		// Sometime in 2001
 		return parseResetUnix(resetNumber)
-	}
 
-	// Could be seconds or milliseconds (or something else!), defaulting to seconds
+	// Could be seconds or milliseconds (or something else!), defaulting to seconds.
 	return parseResetSeconds(resetNumber)
 }
