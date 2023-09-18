@@ -10,6 +10,20 @@ import type {
 import { secondsToDate, toInt, getHeader } from './utilities.js'
 
 /**
+ * The following links might be referred to in the below lines of code:
+ *
+ * [1]: https://github.com/ietf-wg-httpapi/ratelimit-headers/issues/25
+ * [2]: https://docs.gitlab.com/ee/administration/settings/user_and_ip_rate_limits.html#response-headers
+ * [3]: https://techdocs.akamai.com/adaptive-media-delivery/reference/rate-limiting
+ * [4]: https://developer.twitter.com/en/docs/twitter-api/rate-limits#headers-and-codes
+ * [5]: https://developers.linear.app/docs/graphql/working-with-the-graphql-api/rate-limiting#api-request-limits
+ * [6]: https://apidocs.imgur.com/
+ * [7]: https://stackoverflow.com/questions/16022624/examples-of-http-api-rate-limiting-http-response-headers
+ * [8]: https://github.com/mre/rate-limits/blob/master/src/headers/variants.rs
+ *
+ */
+
+/**
  * Parses the passed response/headers object and returns rate limit information.
  *
  * @param input {ResponseObject | HeadersObject} - The node/fetch-style response/headers object.
@@ -17,10 +31,10 @@ import { secondsToDate, toInt, getHeader } from './utilities.js'
  *
  * @returns {RateLimitInfo | undefined} - The rate limit information parsed from the headers.
  */
-export function parseRateLimit(
+export const parseRateLimit = (
 	input: ResponseObject | HeadersObject,
 	passedOptions?: Partial<ParserOptions>,
-): RateLimitInfo | undefined {
+): RateLimitInfo | undefined => {
 	// Default to no configuration.
 	const options = passedOptions ?? {}
 
@@ -52,22 +66,38 @@ const parseHeaders = (
 	const draft7Header = getHeader(headers, 'ratelimit')
 	if (draft7Header) return parseDraft7Header(draft7Header)
 
-	// Find the prefix for the headers, e.g., `X-RateLimit-`, `RateLimit-`, etc.
+	// Find the type of headers sent by the server, e.g., `X-RateLimit-`, `RateLimit-`, etc.
 	const prefix = findPrefix(headers)
 	if (!prefix) return
 
-	const limit = toInt(getHeader(headers, `${prefix}limit`))
+	// Note that `||` is valid in the following lines because used should always
+	// be at least 1, and `||` handles NaN correctly, whereas `??` doesn't.
+	/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
-	// Note that `||` is valid here because used should always be at least 1, and
-	// `||` handles NaN correctly, whereas `??` doesn't.
-	const used = toInt(
-		getHeader(headers, `${prefix}used`) || // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
-			getHeader(headers, `${prefix}observed`),
+	const limit = toInt(
+		getHeader(headers, `${prefix}limit`) ||
+			getHeader(headers, `${prefix}dailylimit`) || // Yelp does this [1].
+			getHeader(headers, `${prefix}max`), // Amazon does this [1].
 	)
+
+	const used = toInt(
+		getHeader(headers, `${prefix}used`) ||
+			getHeader(headers, `${prefix}observed`), // GitLab does this [2].
+	)
+
 	const remaining = toInt(getHeader(headers, `${prefix}remaining`))
 
 	// Try parsing the reset header passed in the response.
-	let reset = parseResetHeader(getHeader(headers, `${prefix}reset`), options)
+	let reset = parseResetHeader(
+		getHeader(headers, `${prefix}reset`) ||
+			getHeader(headers, `${prefix}resettime`) || // Yelp does this [1].
+			getHeader(headers, `${prefix}resetson`) || // Amazon does this [1].
+			getHeader(headers, `${prefix}next`), // Akamai does this [3].
+		options,
+	)
+
+	/* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
+
 	// If the reset header is not set, fallback to the retry-after header.
 	const retryAfter = getHeader(headers, 'retry-after')
 	if (!reset && retryAfter) reset = parseResetUnix(retryAfter)
@@ -93,14 +123,23 @@ const findPrefix = (headers: HeadersObject): string | undefined => {
 	if (getHeader(headers, 'ratelimit-remaining')) return 'ratelimit-'
 	if (getHeader(headers, 'x-ratelimit-remaining')) return 'x-ratelimit-'
 
-	// Twitter - https://developer.twitter.com/en/docs/twitter-api/rate-limits#headers-and-codes
+	// Twitter does this [4].
 	if (getHeader(headers, 'x-rate-limit-remaining')) return 'x-rate-limit-'
 
-	// TODO: handle other vendor-specific headers - see
-	// https://github.com/ietf-wg-httpapi/ratelimit-headers/issues/25
-	// https://stackoverflow.com/questions/16022624/examples-of-http-api-rate-limiting-http-response-headers
-	// https://github.com/mre/rate-limits/blob/master/src/variants.rs
-	// etc.
+	// Linear does this [5].
+	if (getHeader(headers, 'x-ratelimit-requests-remaining'))
+		return 'x-ratelimit-requests-'
+	if (getHeader(headers, 'x-ratelimit-complexity-remaining'))
+		return 'x-ratelimit-complexity-'
+
+	// Imgur does this [6].
+	if (getHeader(headers, 'x-ratelimit-userremaining')) return 'x-ratelimit-user'
+	if (getHeader(headers, 'x-ratelimit-clientremaining'))
+		return 'x-ratelimit-client'
+	if (getHeader(headers, 'x-post-rate-limit-remaining'))
+		return 'x-post-rate-limit-'
+
+	// TODO: handle more headers, see links [7] and [8].
 	return undefined
 }
 
