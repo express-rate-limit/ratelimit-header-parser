@@ -2,10 +2,7 @@
 // Tests for the public API.
 
 import { describe, it, expect } from '@jest/globals'
-import {
-	parseDraft7Header,
-	parseRateLimit,
-} from '../source/ratelimit-header-parser.js'
+import { parseDraft7Header, parseRateLimit } from '../source/parser.js'
 
 const itif = (condition: boolean) => (condition ? it : it.skip)
 
