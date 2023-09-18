@@ -16,16 +16,59 @@ of the
 the uncombined `RateLimit-*` format of earlier drafts, traditional
 `X-RateLimit-*` headers, and a few other formats.
 
+## Installation
+
+From the npm registry:
+
+```sh
+# Using npm
+> npm install ratelimit-header-parser
+# Using yarn or pnpm
+> yarn/pnpm add ratelimit-header-parser
+```
+
+From Github Releases:
+
+```sh
+# Using npm
+> npm install https://github.com/express-rate-limit/ratelimit-header-parser/releases/download/v{version}/ratelimit-header-parser.tgz
+# Using yarn or pnpm
+> yarn/pnpm add https://github.com/express-rate-limit/ratelimit-header-parser/releases/download/v{version}/ratelimit-header-parser.tgz
+```
+
+Replace `{version}` with the version of the package that you want to your, e.g.:
+`1.0.0`.
+
 ## Usage
+
+### Importing
+
+This library is provided in ESM as well as CJS forms, and works with both
+Javascript and Typescript projects.
+
+**This package requires you to use Node 16 or above.**
+
+Import it in a CommonJS project (`type: commonjs` or no `type` field in
+`package.json`) as follows:
+
+```ts
+const { rateLimit } = require('express-rate-limit')
+```
+
+Import it in a ESM project (`type: module` in `package.json`) as follows:
+
+```ts
+import { rateLimit } from 'express-rate-limit'
+```
+
+### Examples
 
 ```ts
 import { getRateLimit } from 'ratelimit-header-parser'
 
-const response = await fetch(
-	'https://api.github.com/repos/express-rate-limit/express-rate-limit/contributors?anon=1',
-)
-
+const response = await fetch(https://api.github.com/orgs/express-rate-limit)
 console.log('github ratelimit:', getRateLimit(response))
+
 // > github ratelimit: { limit: 60, used: 1, remaining: 59, reset: 2023-08-25T04:16:48.000Z }
 ```
 
