@@ -31,7 +31,7 @@ import { secondsToDate, toInt, getHeader } from './utilities.js'
  *
  * @returns {RateLimitInfo | undefined} - The rate limit information parsed from the headers.
  */
-export const parseRateLimit = (
+export const getRateLimit = (
 	input: ResponseObject | HeadersObject,
 	passedOptions?: Partial<ParserOptions>,
 ): RateLimitInfo | undefined => {

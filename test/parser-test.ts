@@ -2,11 +2,11 @@
 // Tests for the public API.
 
 import { describe, it, expect } from '@jest/globals'
-import { parseDraft7Header, parseRateLimit } from '../source/parser.js'
+import { parseDraft7Header, getRateLimit } from '../source/parser.js'
 
 const itif = (condition: boolean) => (condition ? it : it.skip)
 
-describe('parseRateLimitHeaders', () => {
+describe('getRateLimit', () => {
 	// Note: Headers doesn't exist in node 16 or older
 	itif(typeof Headers !== 'undefined')(
 		'should handle X-RateLimit-* headers in a fetch Headers object',
@@ -16,7 +16,7 @@ describe('parseRateLimitHeaders', () => {
 				'X-RateLimit-Remaining': '70',
 				'X-RateLimit-Reset': Math.floor(Date.now() / 1000).toString(),
 			})
-			expect(parseRateLimit(headers)).toMatchObject({
+			expect(getRateLimit(headers)).toMatchObject({
 				limit: 100,
 				remaining: 70,
 				used: 30,
@@ -31,7 +31,7 @@ describe('parseRateLimitHeaders', () => {
 			'ratelimit-remaining': '20',
 			'ratelimit-reset': new Date().toISOString(),
 		}
-		expect(parseRateLimit(headers)).toMatchObject({
+		expect(getRateLimit(headers)).toMatchObject({
 			limit: 60,
 			remaining: 20,
 			used: 40,

@@ -19,13 +19,13 @@ the uncombined `RateLimit-*` format of earlier drafts, traditional
 ## Usage
 
 ```ts
-import { parseRateLimit } from 'ratelimit-header-parser'
+import { getRateLimit } from 'ratelimit-header-parser'
 
 const response = await fetch(
 	'https://api.github.com/repos/express-rate-limit/express-rate-limit/contributors?anon=1',
 )
 
-console.log('github ratelimit:', parseRateLimit(response))
+console.log('github ratelimit:', getRateLimit(response))
 // > github ratelimit: { limit: 60, used: 1, remaining: 59, reset: 2023-08-25T04:16:48.000Z }
 ```
 
@@ -33,7 +33,7 @@ For more examples, take a look at the [`examples/`](examples/) folder.
 
 ## API
 
-### `parseRateLimit(responseOrHeaders, [options]) => object | undefined`
+### `getRateLimit(responseOrHeaders, [options]) => object | undefined`
 
 Scans the input for ratelimit headers in a variety of formats and returns the
 result in a consistent format, or undefined if it fails to find any rate-limit

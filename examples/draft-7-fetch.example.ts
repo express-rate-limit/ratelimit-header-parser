@@ -34,14 +34,14 @@ const { port, server } = await new Promise((resolve) => {
 // `client.ts`
 // ---
 
-import { parseRateLimit } from 'ratelimit-header-parser'
+import { getRateLimit } from 'ratelimit-header-parser'
 
 // Fetch a response from the server.
 const response = await fetch(`http://localhost:${port}`)
 
 console.log('`RateLimit` header content:', response.headers.get('RateLimit'))
 // > `RateLimit` header content: limit=5, remaining=4, reset=60
-console.log('parsed rate limit info:', parseRateLimit(response))
+console.log('parsed rate limit info:', getRateLimit(response))
 // > parsed rate limit info: { limit: 5, used: 1, remaining: 4, reset: 2023-08-25T04:41:31.546Z }
 
 // Cleanup the server.
