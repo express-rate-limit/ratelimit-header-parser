@@ -20,7 +20,6 @@ import { secondsToDate, toInt, getHeader } from './utilities.js'
  * [6]: https://apidocs.imgur.com/
  * [7]: https://stackoverflow.com/questions/16022624/examples-of-http-api-rate-limiting-http-response-headers
  * [8]: https://github.com/mre/rate-limits/blob/master/src/headers/variants.rs
- *
  */
 
 /**
@@ -138,6 +137,9 @@ const findPrefix = (headers: HeadersObject): string | undefined => {
 		return 'x-ratelimit-client'
 	if (getHeader(headers, 'x-post-rate-limit-remaining'))
 		return 'x-post-rate-limit-'
+
+	// Amazon does this [1].
+	if (getHeader(headers, 'x-mws-quota-remaining')) return 'x-mws-quota-'
 
 	// TODO: handle more headers, see links [7] and [8].
 	return undefined
