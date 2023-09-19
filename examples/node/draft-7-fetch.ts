@@ -1,4 +1,4 @@
-// /examples/draft-7-fetch.example.ts
+// /examples/node/draft-7-fetch.ts
 // Use `fetch`, and parse the `RateLimit` header from the IETF spec's 7th draft.
 
 // Note that example has a server and client together - normally they'd be in

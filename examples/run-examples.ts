@@ -11,7 +11,7 @@ console.log(chalk.bold.inverse.green(' examples '))
 console.log()
 
 // Collect all the examples.
-const files = await globby('*.example.ts')
+const files = await globby('node/*.ts', 'deno/*.ts', 'browser/*.ts')
 const tasks = []
 for (const file of files) {
 	tasks.push(
