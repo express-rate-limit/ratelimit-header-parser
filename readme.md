@@ -66,7 +66,7 @@ import { rateLimit } from 'express-rate-limit'
 ```ts
 import { getRateLimit } from 'ratelimit-header-parser'
 
-const response = await fetch(https://api.github.com/orgs/express-rate-limit)
+const response = await fetch('https://api.github.com/orgs/express-rate-limit')
 console.log('github ratelimit:', getRateLimit(response))
 
 // > github ratelimit: { limit: 60, used: 1, remaining: 59, reset: 2023-08-25T04:16:48.000Z }
