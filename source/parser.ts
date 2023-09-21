@@ -23,7 +23,9 @@ import { secondsToDate, toInt, getHeader } from './utilities.js'
  */
 
 /**
- * Parses the passed response/headers object and returns rate limit information.
+ * Parses the passed response/headers object and returns rate limit information
+ * extracted from one of: `RateLimit-`, `X-RateLimit-`, etc. See the `findPrefixes`
+ * function for the order in which the parser searches for headers.
  *
  * @param input {ResponseObject | HeadersObject} - The node/fetch-style response/headers object.
  * @param passedOptions {Partial<ParserOptions> | undefined} - The configuration for the parser.
@@ -34,6 +36,23 @@ export const getRateLimit = (
 	input: ResponseObject | HeadersObject,
 	passedOptions?: Partial<ParserOptions>,
 ): RateLimitInfo | undefined => {
+	const rateLimits = getRateLimits(input, passedOptions)
+	return rateLimits.length === 0 ? undefined : rateLimits[0]
+}
+
+/**
+ * Parses the passed response/headers object and returns rate limit information
+ * extracted from ALL rate limit headers the parser can find.
+ *
+ * @param input {ResponseObject | HeadersObject} - The node/fetch-style response/headers object.
+ * @param passedOptions {Partial<ParserOptions> | undefined} - The configuration for the parser.
+ *
+ * @returns {RateLimitInfo[]} - The rate limit information parsed from the headers.
+ */
+export const getRateLimits = (
+	input: ResponseObject | HeadersObject,
+	passedOptions?: Partial<ParserOptions>,
+): RateLimitInfo[] => {
 	// Default to no configuration.
 	const options = passedOptions ?? {}
 
@@ -49,8 +68,24 @@ export const getRateLimit = (
 		headers = input.getHeaders()
 	else headers = input as HeadersObject
 
-	// Parse the headers.
-	return parseHeaders(headers, options)
+	// If the header is a combined header, parse it according to the 7th draft of
+	// the IETF spec.
+	const draft7Header = getHeader(headers, 'ratelimit')
+	const draft7RateLimit = draft7Header
+		? parseDraft7Header(draft7Header)
+		: undefined
+
+	// Find the type of headers sent by the server, e.g., `X-RateLimit-`, `RateLimit-`, etc.
+	const prefixes = findPrefixes(headers)
+	if (prefixes.length === 0) return []
+
+	// Parse each of the rate limit headers found.
+	const rateLimits = [draft7RateLimit]
+	for (const prefix of prefixes)
+		rateLimits.push(parseHeaders(headers, options, prefix))
+
+	// Return all non-undefined rate limits.
+	return rateLimits.filter((info) => info !== undefined) as RateLimitInfo[]
 }
 
 /**
@@ -59,16 +94,8 @@ export const getRateLimit = (
 const parseHeaders = (
 	headers: HeadersObject,
 	options: Partial<ParserOptions>,
+	prefix: string,
 ): RateLimitInfo | undefined => {
-	// If the header is a combined header, parse it according to the 7th draft of
-	// the IETF spec.
-	const draft7Header = getHeader(headers, 'ratelimit')
-	if (draft7Header) return parseDraft7Header(draft7Header)
-
-	// Find the type of headers sent by the server, e.g., `X-RateLimit-`, `RateLimit-`, etc.
-	const prefix = findPrefix(headers)
-	if (!prefix) return
-
 	// Note that `||` is valid in the following lines because used should always
 	// be at least 1, and `||` handles NaN correctly, whereas `??` doesn't.
 	/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -115,34 +142,38 @@ const parseHeaders = (
  *
  * @param headers {HeadersObject} - The headers to search in.
  *
- * @returns {string | undefined} - The prefix, if any is found.
+ * @returns {string[]} - The prefix, if any is found.
  */
-const findPrefix = (headers: HeadersObject): string | undefined => {
+const findPrefixes = (headers: HeadersObject): string[] => {
+	const prefixes = []
+
 	// The draft-6 and unofficial rate limit headers.
-	if (getHeader(headers, 'ratelimit-remaining')) return 'ratelimit-'
-	if (getHeader(headers, 'x-ratelimit-remaining')) return 'x-ratelimit-'
+	if (getHeader(headers, 'ratelimit-remaining')) prefixes.push('ratelimit-')
+	if (getHeader(headers, 'x-ratelimit-remaining')) prefixes.push('x-ratelimit-')
 
 	// Twitter does this [4].
-	if (getHeader(headers, 'x-rate-limit-remaining')) return 'x-rate-limit-'
+	if (getHeader(headers, 'x-rate-limit-remaining'))
+		prefixes.push('x-rate-limit-')
 
 	// Linear does this [5].
 	if (getHeader(headers, 'x-ratelimit-requests-remaining'))
-		return 'x-ratelimit-requests-'
+		prefixes.push('x-ratelimit-requests-')
 	if (getHeader(headers, 'x-ratelimit-complexity-remaining'))
-		return 'x-ratelimit-complexity-'
+		prefixes.push('x-ratelimit-complexity-')
 
 	// Imgur does this [6].
-	if (getHeader(headers, 'x-ratelimit-userremaining')) return 'x-ratelimit-user'
+	if (getHeader(headers, 'x-ratelimit-userremaining'))
+		prefixes.push('x-ratelimit-user')
 	if (getHeader(headers, 'x-ratelimit-clientremaining'))
-		return 'x-ratelimit-client'
+		prefixes.push('x-ratelimit-client')
 	if (getHeader(headers, 'x-post-rate-limit-remaining'))
-		return 'x-post-rate-limit-'
+		prefixes.push('x-post-rate-limit-')
 
 	// Amazon does this [1].
-	if (getHeader(headers, 'x-mws-quota-remaining')) return 'x-mws-quota-'
+	if (getHeader(headers, 'x-mws-quota-remaining')) prefixes.push('x-mws-quota-')
 
 	// TODO: handle more headers, see links [7] and [8].
-	return undefined
+	return prefixes
 }
 
 /**
