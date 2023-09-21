@@ -4,8 +4,16 @@
 	"collectCoverageFrom": ["source/**/*.ts"],
 	"testTimeout": 30000,
 	"testMatch": ["**/test/*-test.ts"],
-	"moduleFileExtensions": ["js", "jsx", "json", "ts", "tsx"],
+	"extensionsToTreatAsEsm": [".ts"],
 	"moduleNameMapper": {
 		"^(\\.{1,2}/.*)\\.js$": "$1"
+	},
+	"transform": {
+		"^.+\\.[tj]sx?$": [
+			"ts-jest",
+			{
+				"useESM": true
+			}
+		]
 	}
 }
