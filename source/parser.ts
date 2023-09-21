@@ -62,11 +62,27 @@ export const getRateLimits = (
 		'headers' in input &&
 		typeof input.headers === 'object' &&
 		!Array.isArray(input.headers)
-	)
+	) {
+		// The input is a fetch-style response object, the headers are a property on
+		// the object.
 		headers = input.headers
-	else if ('getHeaders' in input && typeof input.getHeaders === 'function')
+	} else if ('getHeaders' in input && typeof input.getHeaders === 'function') {
+		// The input is a node-style response object, get the headers using the
+		// `getHeaders` function.
 		headers = input.getHeaders()
-	else headers = input as HeadersObject
+	} else if (
+		'getSetCookie' in input &&
+		typeof input.getSetCookie === 'function'
+	) {
+		// The input is a node-style response object.
+		headers = input as HeadersObject
+	} else {
+		// The input is a JSON object that contains all the headers. Make sure all
+		// the header names are in lower case.
+		headers = Object.fromEntries(
+			Object.entries(input).map(([k, v]) => [k.toLowerCase(), v]),
+		) as HeadersObject
+	}
 
 	// If the header is a combined header, parse it according to the 7th draft of
 	// the IETF spec.
