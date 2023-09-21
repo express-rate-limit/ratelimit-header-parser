@@ -67,7 +67,7 @@ export const getRateLimits = (
 		// the object.
 		headers = input.headers
 	} else if ('getHeaders' in input && typeof input.getHeaders === 'function') {
-		// The input is a node-style response object, get the headers using the
+		// The input is a node `ServerResponse` object, get the headers using the
 		// `getHeaders` function.
 		headers = input.getHeaders()
 	} else if (
