@@ -1,6 +1,7 @@
 // /test/parser-test.ts
 // Tests for the public API.
 
+import { ServerResponse } from 'node:http'
 import { describe, it, expect } from '@jest/globals'
 import {
 	parseDraft7Header,
@@ -36,7 +37,7 @@ describe('input tests', () => {
 	})
 
 	it('should handle headers in a node `ServerResponse` object', () => {
-		const response = new Response('Hallo!', { headers })
+		const response = new ServerResponse('Hallo!', { headers })
 
 		expect(getRateLimit(response)).toMatchObject(info)
 	})
