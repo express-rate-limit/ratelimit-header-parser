@@ -225,7 +225,7 @@ export const parseDraft7Header = (header: string): RateLimitInfo => {
  *
  * @param header {string} - The header's contents.
  */
-const parseResetHeader = (
+export const parseResetHeader = (
 	passedHeader: string | undefined,
 	options: Partial<ParserOptions>,
 ): Date | undefined => {
@@ -290,7 +290,7 @@ const parseResetMilliseconds = (header: string | number): Date =>
  * Find out what type of time is passed in the `RateLimit-Reset` header, and
  * parse it into a `Date`.
  */
-const parseResetAuto = (header: string): Date => {
+export const parseResetAuto = (header: string): Date => {
 	// If it has any letters, assume it's a date string.
 	if (/[a-z]/i.test(header)) return parseResetDate(header)
 
