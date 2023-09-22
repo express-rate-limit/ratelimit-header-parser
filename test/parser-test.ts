@@ -1,7 +1,6 @@
 // /test/parser-test.ts
 // Tests for the public API.
 
-import { ServerResponse } from 'node:http'
 import { describe, it, expect } from '@jest/globals'
 import {
 	parseDraft7Header,
@@ -24,7 +23,7 @@ describe('input tests', () => {
 		reset: expect.any(Date),
 	}
 
-	// NOTE: the `Header` class doesn't exist in node 16 or older.
+	// NOTE: the `Header` and `Response` classes don't exist in node 16 or older.
 	itif(typeof Headers !== 'undefined')(
 		'should handle headers in a fetch-style headers object',
 		() => {
@@ -32,14 +31,17 @@ describe('input tests', () => {
 		},
 	)
 
+	itif(typeof Response !== 'undefined')(
+		'should handle headers in a node `ServerResponse` object',
+		() => {
+			const response = new Response('Hallo!', { headers })
+
+			expect(getRateLimit(response)).toMatchObject(info)
+		},
+	)
+
 	it('should handle headers in a node-style headers object', () => {
 		expect(getRateLimit(headers)).toMatchObject(info)
-	})
-
-	it('should handle headers in a node `ServerResponse` object', () => {
-		const response = new ServerResponse('Hallo!', { headers })
-
-		expect(getRateLimit(response)).toMatchObject(info)
 	})
 })
 
