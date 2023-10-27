@@ -31,12 +31,12 @@ export type RateLimitInfo = {
 	/**
 	 * The number of requests already made to that endpoint.
 	 */
-	used: number
+	used?: number
 
 	/**
 	 * The number of requests that can be made before reaching the rate limit.
 	 */
-	remaining: number
+	remaining?: number
 
 	/**
 	 * The timestamp at which the window resets, and one's hit count is set to zero.

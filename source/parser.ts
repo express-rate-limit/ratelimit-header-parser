@@ -7,7 +7,12 @@ import type {
 	RateLimitInfo,
 	ParserOptions,
 } from './types'
-import { secondsToDate, toInt, getHeader } from './utilities.js'
+import {
+	secondsToDate,
+	toInt,
+	getHeader,
+	toIntOrUndefined,
+} from './utilities.js'
 
 /**
  * The following links might be referred to in the below lines of code:
@@ -38,6 +43,30 @@ export const getRateLimit = (
 ): RateLimitInfo | undefined => {
 	const rateLimits = getRateLimits(input, passedOptions)
 	return rateLimits.length === 0 ? undefined : rateLimits[0]
+}
+
+/**
+ * Function to sort an array of RateLimitInfo[] by remaining, then by limit, whith lower values coming first, and undefined remaining values coming after defined ones
+ * @param a {RateLimitInfo}
+ * @param b {RateLimitInfo}
+ * @returns number
+ */
+export function remainingSortFn(a: RateLimitInfo, b: RateLimitInfo): number {
+	const aDefined = a.remaining !== undefined
+	const bDefined = b.remaining !== undefined
+	if (a.remaining === b.remaining) {
+		return a.limit - b.limit
+	}
+
+	if (aDefined && !bDefined) {
+		return -1
+	}
+
+	if (!aDefined && bDefined) {
+		return 1
+	}
+
+	return a.remaining! - b.remaining!
 }
 
 /**
@@ -106,9 +135,7 @@ export const getRateLimits = (
 	) as RateLimitInfo[]
 
 	// Sort so that the limit with the lowest remaining value comes first
-	rateLimits.sort(
-		(a: RateLimitInfo, b: RateLimitInfo) => a.remaining - b.remaining,
-	)
+	rateLimits.sort(remainingSortFn)
 
 	return rateLimits
 }
@@ -217,13 +244,13 @@ const reReset = /reset\s*=\s*(\d+)/i
  */
 export const parseDraft7Header = (header: string): RateLimitInfo => {
 	const limit = toInt(reLimit.exec(header)?.[1])
-	const remaining = toInt(reRemaining.exec(header)?.[1])
+	const remaining = toIntOrUndefined(reRemaining.exec(header)?.[1]) // Optional per https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-07#name-ratelimit
 	const resetSeconds = toInt(reReset.exec(header)?.[1])
 	const reset = secondsToDate(resetSeconds)
 
 	return {
 		limit,
-		used: limit - remaining,
+		used: typeof remaining === 'number' ? limit - remaining : undefined,
 		remaining,
 		reset,
 	}

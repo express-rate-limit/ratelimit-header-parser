@@ -21,12 +21,25 @@ export const secondsToDate = (seconds: number): Date => {
  *
  * @param input {string | number | undefined} - The input to convert to a number.
  *
- * @return {number} - The parsed integer.
- * @throws {Error} - Thrown if the string does not contain a valid number.
+ * @return {number} - The parsed integer. May be NaN for unparseable input.
  */
 export const toInt = (input: string | number | undefined): number => {
 	if (typeof input === 'number') return input
 	return Number.parseInt(input ?? '', 10)
+}
+
+/**
+ * Converts a string/number to a number or undefined.
+ *
+ * @param input {string | number | undefined} - The input to convert to a number.
+ *
+ * @return {number | undefined} - The parsed integer.
+ */
+export const toIntOrUndefined = (
+	input: string | number | undefined,
+): number | undefined => {
+	const number_ = toInt(input)
+	return Number.isNaN(number_) ? undefined : number_
 }
 
 /**

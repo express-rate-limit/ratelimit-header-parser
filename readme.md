@@ -80,14 +80,17 @@ For more examples, take a look at the [`examples/`](examples/) folder.
 
 Scans the input for ratelimit headers in a variety of formats and returns the
 result in a consistent format, or undefined if it fails to find any rate-limit
-headers. Returns an object with the following fields, or `undefined` if it does
-not find any rate-limit headers.
+headers. If multiple ratelimits are found, it chooses the one with the lowest
+remaining value.
+
+Returns an object with the following fields, or `undefined` if it does not find
+any rate-limit headers.
 
 ```ts
 type RateLimitInfo = {
 	limit: number
-	used: number
-	remaining: number
+	used: number | undefined
+	remaining: number | undefined
 	reset: Date | undefined
 }
 ```
@@ -111,6 +114,14 @@ type Options = {
 		'milliseconds' | // Treat the value as the number of milliseconds from the current time.
 }
 ```
+
+### `getRateLimits(responseOrHeaders, [options]) => object[]`
+
+For APIs that may return multiple rate limits (e.g. per client & per end-user),
+this will parse all of them.
+
+Accepts the same inputs as `getRateLimit` and returns an array containing zero
+or more of the same `RateLimitInfo` objects that `getRateLimit` returns.
 
 ## Issues and Contributing
 
