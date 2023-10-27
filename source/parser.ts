@@ -96,12 +96,21 @@ export const getRateLimits = (
 	if (prefixes.length === 0) return []
 
 	// Parse each of the rate limit headers found.
-	const rateLimits = [draft7RateLimit]
+	const potentialRateLimits = [draft7RateLimit]
 	for (const prefix of prefixes)
-		rateLimits.push(parseHeaders(headers, options, prefix))
+		potentialRateLimits.push(parseHeaders(headers, options, prefix))
 
-	// Return all non-undefined rate limits.
-	return rateLimits.filter((info) => info !== undefined) as RateLimitInfo[]
+	// Filter out undefined rate limits.
+	const rateLimits = potentialRateLimits.filter(
+		(info) => info !== undefined,
+	) as RateLimitInfo[]
+
+	// Sort so that the limit with the lowest remaining value comes first
+	rateLimits.sort(
+		(a: RateLimitInfo, b: RateLimitInfo) => a.remaining - b.remaining,
+	)
+
+	return rateLimits
 }
 
 /**

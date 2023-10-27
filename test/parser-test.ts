@@ -74,8 +74,7 @@ describe('api tests', () => {
 			'X-RateLimit-UserReset': Date.now().toString(),
 		}
 
-		// NOTE: the order in which the parsed info is returns depends on the order
-		// of detection in `source/parsers.ts#findPrefixes`.
+		// NOTE: the result is sorted by remaining values with smallest first
 		const infos = [
 			{
 				limit: 60,
