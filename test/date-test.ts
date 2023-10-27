@@ -1,4 +1,11 @@
-import { describe, test, expect } from '@jest/globals'
+import {
+	describe,
+	test,
+	expect,
+	jest,
+	afterEach,
+	beforeEach,
+} from '@jest/globals'
 import { parseResetAuto } from '../source/parser.js'
 
 describe('date tests', () => {
@@ -18,13 +25,22 @@ describe('date tests', () => {
 		expect(parsedDate.getTime()).toBe(thatDay.getTime())
 	})
 
-	test('delta seconds auto-detection', () => {
-		const now = new Date()
-		const then = new Date()
-		then.setSeconds(now.getSeconds() + 42)
-		const dateString = '42'
+	describe('mocked clock', () => {
+		beforeEach(() => {
+			jest.useFakeTimers()
+		})
+		afterEach(() => {
+			jest.useRealTimers()
+		})
 
-		const parsedDate = parseResetAuto(dateString)
-		expect(parsedDate.getTime()).toBe(then.getTime())
+		test('delta seconds auto-detection', () => {
+			const now = new Date()
+			const then = new Date()
+			then.setSeconds(now.getSeconds() + 42)
+			const dateString = '42'
+
+			const parsedDate = parseResetAuto(dateString)
+			expect(parsedDate.getTime()).toBe(then.getTime())
+		})
 	})
 })
