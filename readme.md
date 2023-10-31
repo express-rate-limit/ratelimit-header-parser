@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![tests](https://github.com/express-rate-limit/ratelimit-header-parser/actions/workflows/ci.yaml/badge.svg)](https://github.com/express-rate-limit/ratelimit-header-parser/actions/workflows/ci.yaml)
+[![tests](https://img.shields.io/github/actions/workflow/status/express-rate-limit/ratelimit-header-parser/ci.yaml)](https://github.com/express-rate-limit/ratelimit-header-parser/actions/workflows/ci.yaml)
 [![npm version](https://img.shields.io/npm/v/ratelimit-header-parser.svg)](https://npmjs.org/package/ratelimit-header-parser 'View this project on NPM')
 [![npm downloads](https://img.shields.io/npm/dm/ratelimit-header-parser)](https://www.npmjs.com/package/ratelimit-header-parser)
 [![license](https://img.shields.io/npm/l/ratelimit-header-parser)](license.md)
