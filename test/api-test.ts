@@ -1,4 +1,4 @@
-// /test/parser-test.ts
+// /test/api-test.ts
 // Tests for the public API.
 
 import { describe, test, expect } from '@jest/globals'
@@ -36,7 +36,7 @@ describe('api tests', () => {
 			'X-RateLimit-UserReset': Date.now().toString(),
 		}
 
-		// NOTE: the result is sorted by remaining values with smallest first
+		// NOTE: the result is sorted by remaining values with smallest first.
 		const infos = [
 			{
 				limit: 60,
@@ -55,6 +55,7 @@ describe('api tests', () => {
 		expect(getRateLimits(headers)).toMatchObject(infos)
 	})
 
+	// NOTE: `parseDraft7Header` is not a part of the public API.
 	test('combined header (draft 7) parsing', () => {
 		const header = 'limit=100, remaining=25, reset=5'
 		const info = {

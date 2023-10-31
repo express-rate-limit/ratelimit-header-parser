@@ -1,10 +1,13 @@
+// /test/date-test.ts
+// Tests the date parsing functions.
+
 import {
+	jest,
 	describe,
 	test,
 	expect,
-	jest,
-	afterEach,
 	beforeEach,
+	afterEach,
 } from '@jest/globals'
 import { parseResetAuto } from '../source/parser.js'
 
@@ -20,6 +23,15 @@ describe('date tests', () => {
 
 	test('unix date auto-detection', () => {
 		const dateString = '1684260733'
+
+		const parsedDate = parseResetAuto(dateString)
+		expect(parsedDate.getTime()).toBe(thatDay.getTime())
+	})
+
+	// NOTE: This test doesn't work because `parseResetAuto` defaults to parsing
+	// the date as seconds instead of milliseconds.
+	test.failing('milliseconds date auto-detection', () => {
+		const dateString = '1684260733000'
 
 		const parsedDate = parseResetAuto(dateString)
 		expect(parsedDate.getTime()).toBe(thatDay.getTime())

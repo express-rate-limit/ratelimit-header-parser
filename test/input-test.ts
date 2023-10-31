@@ -1,3 +1,6 @@
+// /test/input-test.ts
+// Tests the types of objects the library can parse.
+
 import { describe, test, expect } from '@jest/globals'
 import { getRateLimit } from '../source/parser.js'
 
