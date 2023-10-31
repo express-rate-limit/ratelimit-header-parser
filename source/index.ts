@@ -1,2 +1,8 @@
+// /source/index.ts
+// Export away!
+
+// Export all the types as named exports
 export * from './types.js'
-export { parseRateLimit } from './ratelimit-header-parser.js'
+
+// Export the public API as named exports too.
+export { getRateLimit, getRateLimits } from './parser.js'
