@@ -7,5 +7,8 @@
 	"extensionsToTreatAsEsm": [".ts"],
 	"moduleNameMapper": {
 		"^(\\.{1,2}/.*)\\.js$": "$1"
-	}
+	},
+	"roots": ["<rootDir>", "<rootDir>/source"],
+	"modulePaths": ["<rootDir>", "<rootDir>/source"],
+	"moduleDirectories": ["node_modules"]
 }

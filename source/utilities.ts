@@ -1,7 +1,7 @@
 // /source/utilities.ts
 // The utility functions for the library.
 
-import type { HeadersObject } from './types.js'
+import type { RateLimitInfo } from './types.js'
 
 /**
  * Adds the given number of seconds to the current time and returns a `Date`.
@@ -43,23 +43,22 @@ export const toIntOrUndefined = (
 }
 
 /**
- * Returns a header (or undefined if it's not present) from the passed
- * node/fetch-style header object.
+ * This function sorts an array of `RateLimitInfo` objects by comparing the
+ * `remaining`, and then the `limit` properties, whith lower values coming
+ * first, and undefined remaining values coming after defined ones.
  *
- * @param headers {HeadersObject} - The headers in the response.
- * @param name {string} - The name of the header to return.
+ * @param a {RateLimitInfo}
+ * @param b {RateLimitInfo}
  *
- * @returns {string | undefined} - The contents of the header.
+ * @returns number
  */
-export const getHeader = (
-	headers: HeadersObject,
-	name: string,
-): string | undefined => {
-	if ('get' in headers && typeof headers.get === 'function')
-		return headers.get(name) ?? undefined // Returns null if missing, but everything else is undefined for missing values
+export const rateLimitSorter = (a: RateLimitInfo, b: RateLimitInfo): number => {
+	const aDefined = a.remaining !== undefined
+	const bDefined = b.remaining !== undefined
 
-	if (name in headers && typeof (headers as any)[name] === 'string')
-		return (headers as any)[name] as string
+	if (a.remaining === b.remaining) return a.limit - b.limit
+	if (aDefined && !bDefined) return -1
+	if (!aDefined && bDefined) return 1
 
-	return undefined
+	return a.remaining! - b.remaining!
 }

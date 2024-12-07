@@ -9,7 +9,7 @@ import {
 	beforeEach,
 	afterEach,
 } from '@jest/globals'
-import { parseResetAuto } from '../source/parser.js'
+import { parseResetAuto } from '../source/parser/index.js'
 
 describe('date tests', () => {
 	const thatDay = new Date('2023-05-16T18:12:13.000Z')

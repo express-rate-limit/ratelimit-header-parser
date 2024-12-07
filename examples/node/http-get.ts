@@ -6,7 +6,10 @@ import { getRateLimits } from 'ratelimit-header-parser'
 
 // Make a GET request to the Imgur API.
 https.get('https://api.imgur.com/post/v1/posts/t/aww', (response) => {
-	console.log('imgur ratelimit:', getRateLimits(response))
+	console.log(
+		'imgur ratelimit:',
+		JSON.stringify(getRateLimits(response), undefined, 2),
+	)
 	return response.resume()
 })
 

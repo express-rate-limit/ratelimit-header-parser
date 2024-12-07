@@ -2,11 +2,7 @@
 // Tests for the public API.
 
 import { describe, test, expect } from '@jest/globals'
-import {
-	parseDraft7Header,
-	getRateLimit,
-	getRateLimits,
-} from '../source/parser.js'
+import { getRateLimit, getRateLimits } from '../source/index.js'
 
 describe('api tests', () => {
 	test('json header object parsing', () => {
@@ -55,9 +51,11 @@ describe('api tests', () => {
 		expect(getRateLimits(headers)).toMatchObject(infos)
 	})
 
-	// NOTE: `parseDraft7Header` is not a part of the public API.
 	test('combined header (draft 7) parsing', () => {
-		const header = 'limit=100, remaining=25, reset=5'
+		const headers = {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			RateLimit: 'limit=100, remaining=25, reset=5',
+		}
 		const info = {
 			limit: 100,
 			remaining: 25,
@@ -65,6 +63,6 @@ describe('api tests', () => {
 			reset: expect.any(Date),
 		}
 
-		expect(parseDraft7Header(header)).toMatchObject(info)
+		expect(getRateLimit(headers)).toMatchObject(info)
 	})
 })

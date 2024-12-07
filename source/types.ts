@@ -22,28 +22,52 @@ export type HeadersObject =
  * to the parser.
  */
 export type RateLimitInfo = {
-	/**
-	 * The max number of requests one can make to that endpoint in the stipulated
-	 * window.
-	 */
-	limit: number
+	info?: {
+		/**
+		 * The measure of activity by the client in the current window.
+		 */
+		used: number
+
+		/**
+		 * The measure of activity that can be done before reaching the rate limit.
+		 */
+		remaining: number
+
+		/**
+		 * The timestamp at which the measure of activity of the client is reset.
+		 */
+		reset: Date
+	}
 
 	/**
-	 * The number of requests already made to that endpoint.
+	 * The rate limiting policy of the server.
 	 */
-	used?: number
+	policy: {
+		/**
+		 * The name of the rate limiting policy.
+		 */
+		name?: string
 
-	/**
-	 * The number of requests that can be made before reaching the rate limit.
-	 */
-	remaining?: number
+		/**
+		 * The maximum measure of the activity a client is allowed in the given window.
+		 */
+		quota: {
+			value: number
+			unit: 'requests' | 'content-bytes' | 'concurrent-requests'
+		}
 
-	/**
-	 * The timestamp at which the window resets, and one's hit count is set to zero.
-	 */
-	reset?: Date
+		/**
+		 * The interval of time in which the activity of the client is measured and
+		 * limited by the quota.
+		 */
+		window?: number
 
-	// TODO: policy
+		/**
+		 * The partition 'key' used to divide server capacity across different clients
+		 * and users. The method for generating one is determined by the server.
+		 */
+		partition?: string
+	}
 }
 
 /**
@@ -51,10 +75,18 @@ export type RateLimitInfo = {
  */
 export type ParserOptions = {
 	/**
-	 * How to parse the `reset` field. If unset, the parser will guess based on
-	 * the content of the header.
+	 * Whether or not to throw errors upon encountering problems while parsing
+	 * the input headers.
+	 *
+	 * Defaults to `false`.
 	 */
-	reset:
+	strict: boolean
+
+	/**
+	 * How to parse any reset time encountered. If unset, the parser will guess
+	 * based on the content of the header.
+	 */
+	resetTimeFormat:
 		| 'date' // Pass the value to `new Date(...)` to let the JavaScript engine parse it.
 		| 'unix' // Treat the value as the number of seconds since January 1, 1970 (A.K.A a UNIX epoch timestamp).
 		| 'seconds' // Treat the value as the number of seconds from the current time.

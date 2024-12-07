@@ -2,7 +2,7 @@
 // Tests the types of objects the library can parse.
 
 import { describe, test, expect } from '@jest/globals'
-import { getRateLimit } from '../source/parser.js'
+import { getRateLimit } from '../source/index.js'
 
 const testIf = (condition: boolean) => (condition ? test : test.skip)
 

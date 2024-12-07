@@ -1,5 +1,5 @@
-// /examples/node/draft-7-fetch.ts
-// Use `fetch`, and parse the `RateLimit` header from the IETF spec's 7th draft.
+// /examples/node/draft-88-fetch.ts
+// Use `fetch`, and parse the `RateLimit` header from the IETF spec's 8th draft.
 
 // Note that example has a server and client together - normally they'd be in
 // separate files, likely on separate devices.
@@ -15,10 +15,16 @@ import { rateLimit } from 'express-rate-limit'
 const app = express()
 app.use(
 	rateLimit({
-		limit: 5,
-		windowMs: 60 * 1000, // 1 minute windows.
+		limit: 8,
+		windowMs: 2 * 60 * 1000, // 2 minute windows.
 		legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
-		standardHeaders: 'draft-7', // Use the combined `RateLimit` header.
+		standardHeaders: 'draft-8', // Use the combined `RateLimit` header.
+	}),
+	rateLimit({
+		limit: 45,
+		windowMs: 5 * 60 * 60 * 1000, // 2 hour windows.
+		legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
+		standardHeaders: 'draft-8', // Use the combined `RateLimit` header.
 	}),
 )
 
@@ -34,7 +40,7 @@ const { port, server } = await new Promise((resolve) => {
 // `client.ts`
 // ---
 
-import { getRateLimit } from 'ratelimit-header-parser'
+import { getRateLimits } from 'ratelimit-header-parser'
 
 // Fetch a response from the server.
 const response = await fetch(`http://localhost:${port}`)
@@ -47,7 +53,7 @@ console.log(
 // > `RateLimit` header content: limit=5, remaining=4, reset=60
 console.log(
 	'parsed rate limit info:',
-	JSON.stringify(getRateLimit(response), undefined, 2),
+	JSON.stringify(getRateLimits(response), undefined, 2),
 )
 // > parsed rate limit info: { limit: 5, used: 1, remaining: 4, reset: 2023-08-25T04:41:31.546Z }
 
