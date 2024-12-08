@@ -1,7 +1,18 @@
 // /source/utilities.ts
 // The utility functions for the library.
 
-import type { RateLimitInfo } from './types.js'
+import type { ParsedRateLimit, RateLimitPolicy } from './types.js'
+
+/**
+ * Makes a type partial, recursively: https://stackoverflow.com/a/51365037
+ */
+type RecursivePartial<T> = {
+	[P in keyof T]?: T[P] extends (infer U)[]
+		? RecursivePartial<U>[]
+		: T[P] extends object | undefined
+		? RecursivePartial<T[P]>
+		: T[P]
+}
 
 /**
  * Adds the given number of seconds to the current time and returns a `Date`.
@@ -19,7 +30,7 @@ export const secondsToDate = (seconds: number): Date => {
 /**
  * Converts a string/number to a number.
  *
- * @param input {string | number | undefined} - The input to convert to a number.
+ * @param input {any | undefined} - The input to convert to a number.
  *
  * @return {number} - The parsed integer. May be NaN for unparseable input.
  */
@@ -31,7 +42,7 @@ export const toInt = (input: string | number | undefined): number => {
 /**
  * Converts a string/number to a number or undefined.
  *
- * @param input {string | number | undefined} - The input to convert to a number.
+ * @param input {any | undefined} - The input to convert to a number.
  *
  * @return {number | undefined} - The parsed integer.
  */
@@ -43,22 +54,81 @@ export const toIntOrUndefined = (
 }
 
 /**
- * This function sorts an array of `RateLimitInfo` objects by comparing the
- * `remaining`, and then the `limit` properties, whith lower values coming
+ * This function sorts an array of `ParsedRateLimit` objects by comparing the
+ * `remaining`, and then the `quota` properties, whith lower values coming
  * first, and undefined remaining values coming after defined ones.
  *
- * @param a {RateLimitInfo}
- * @param b {RateLimitInfo}
+ * @param a {ParsedRateLimit}
+ * @param b {ParsedRateLimit}
  *
  * @returns number
  */
-export const rateLimitSorter = (a: RateLimitInfo, b: RateLimitInfo): number => {
-	const aDefined = a.remaining !== undefined
-	const bDefined = b.remaining !== undefined
+export const rateLimitSorter = (
+	a: ParsedRateLimit,
+	b: ParsedRateLimit,
+): number => {
+	const aDefined = a.info?.remaining !== undefined
+	const bDefined = b.info?.remaining !== undefined
 
-	if (a.remaining === b.remaining) return a.limit - b.limit
+	if (a.info?.remaining === b.info?.remaining)
+		return (a.policy?.quota?.value ?? 0) - (b.policy?.quota?.value ?? 0)
 	if (aDefined && !bDefined) return -1
 	if (!aDefined && bDefined) return 1
 
-	return a.remaining! - b.remaining!
+	return a.info!.remaining! - b.info!.remaining!
+}
+
+/**
+ * Create a default policy when no policy exists, from the parsed limit.
+ *
+ * @param limit {number} - The quota parsed from the `RateLimit` header.
+ *
+ * @returns {Partial<RateLimitPolicy>}
+ */
+export const createDefaultPolicy = (
+	limit: number,
+): Partial<RateLimitPolicy> => {
+	return {
+		quota: {
+			value: limit,
+			unit: 'requests',
+		},
+	}
+}
+
+/**
+ * Construct the `ParsedRateLimit` object from all the details extracted from
+ * the headers.
+ *
+ * @returns {ParsedRateLimit}
+ */
+export const constructParsedRateLimit = (details: {
+	info?: {
+		limit?: number
+		remaining?: number
+		reset?: Date
+	}
+	policy?: RecursivePartial<RateLimitPolicy>
+}): ParsedRateLimit => {
+	const { limit, remaining, reset } = details.info ?? {}
+
+	// Construct the info based on whatever information is well-defined.
+	const info =
+		limit !== undefined && remaining !== undefined
+			? { used: limit - remaining, remaining, reset }
+			: remaining !== undefined || reset !== undefined
+			? { ...(remaining && { remaining }), ...(reset && { reset }) }
+			: undefined
+
+	// Determine the policy, defaulting to generating a limit-based policy if no
+	// policy is provided.
+	const policy =
+		details.policy ??
+		(limit === undefined ? undefined : createDefaultPolicy(limit))
+
+	// Construct parsed the parsed rate limit object.
+	return {
+		...(info && { info }),
+		...(policy && { policy }),
+	} as ParsedRateLimit
 }

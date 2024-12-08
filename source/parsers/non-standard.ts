@@ -3,10 +3,10 @@
 
 // @ts-expect-error no type definitions
 import { parseItem } from 'structured-headers'
-import { parse as parseResetTime } from './reset.js'
-import type { HeadersObject, RateLimitInfo, ParserOptions } from '../types'
+import type { HeadersObject, ParsedRateLimit, ParserOptions } from '../types'
 import { getHeader } from '../headers.js'
 import { toInt } from '../utilities.js'
+import { parse as parseResetTime } from './reset.js'
 
 /**
  * Parses non standard headers as per their documentation.
@@ -15,13 +15,13 @@ import { toInt } from '../utilities.js'
  * @param options {Partial<ParserOptions>} - The parser's configuration.
  * @param prefix {string} - The vendor-specific prefix that each header contains.
  *
- * @returns {RateLimitInfo | undefined} - The normalized rate limit information, if any header is found.
+ * @returns {ParsedRateLimit | undefined} - The normalized rate limit information, if any header is found.
  */
 export const parse = (
 	headers: HeadersObject,
 	options: Partial<ParserOptions>,
 	prefix: string,
-): RateLimitInfo | undefined => {
+): ParsedRateLimit | undefined => {
 	// Note that `||` is valid in the following lines because used should always
 	// be at least 1, and `||` handles NaN correctly, whereas `??` doesn't.
 	/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */

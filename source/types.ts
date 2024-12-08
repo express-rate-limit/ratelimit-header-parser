@@ -18,56 +18,69 @@ export type HeadersObject =
 	| { [key: string]: string | string[] }
 
 /**
- * The rate limit information gleaned from the response/headers object passed
- * to the parser.
+ * The rate limit info extracted from the header.
  */
 export type RateLimitInfo = {
-	info?: {
-		/**
-		 * The measure of activity by the client in the current window.
-		 */
-		used: number
+	/**
+	 * The measure of activity by the client in the current window.
+	 */
+	used: number
 
-		/**
-		 * The measure of activity that can be done before reaching the rate limit.
-		 */
-		remaining: number
+	/**
+	 * The measure of activity that can be done before reaching the rate limit.
+	 */
+	remaining: number
 
-		/**
-		 * The timestamp at which the measure of activity of the client is reset.
-		 */
-		reset: Date
+	/**
+	 * The timestamp at which the measure of activity of the client is reset.
+	 */
+	reset: Date
+}
+
+/**
+ * The rate limiting policy of the server.
+ */
+export type RateLimitPolicy = {
+	/**
+	 * The name of the rate limiting policy.
+	 */
+	name: string
+
+	/**
+	 * The maximum measure of the activity a client is allowed in the given window.
+	 */
+	quota: {
+		value: number
+		unit: 'requests' | 'content-bytes' | 'concurrent-requests'
 	}
+
+	/**
+	 * The interval of time in which the activity of the client is measured and
+	 * limited by the quota.
+	 */
+	window: number
+
+	/**
+	 * The partition 'key' used to divide server capacity across different clients
+	 * and users. The method for generating one is determined by the server.
+	 */
+	partition: string
+}
+
+/**
+ * The rate limit information extracted from the response/headers object passed
+ * to the parser.
+ */
+export type ParsedRateLimit = {
+	/**
+	 * The rate limit info extracted from the header.
+	 */
+	info?: Partial<RateLimitInfo>
 
 	/**
 	 * The rate limiting policy of the server.
 	 */
-	policy: {
-		/**
-		 * The name of the rate limiting policy.
-		 */
-		name?: string
-
-		/**
-		 * The maximum measure of the activity a client is allowed in the given window.
-		 */
-		quota: {
-			value: number
-			unit: 'requests' | 'content-bytes' | 'concurrent-requests'
-		}
-
-		/**
-		 * The interval of time in which the activity of the client is measured and
-		 * limited by the quota.
-		 */
-		window?: number
-
-		/**
-		 * The partition 'key' used to divide server capacity across different clients
-		 * and users. The method for generating one is determined by the server.
-		 */
-		partition?: string
-	}
+	policy?: Partial<RateLimitPolicy>
 }
 
 /**

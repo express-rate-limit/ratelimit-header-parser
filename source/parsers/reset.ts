@@ -19,14 +19,14 @@ const converters = {
  */
 const getDateFromString = (header: string): Date => {
 	// If it has any letters, assume it's a date string.
-	if (/[a-z]/i.test(header)) return converters['date'](header)
+	if (/[a-z]/i.test(header)) return converters.date(header)
 
 	// Else, assume it is a unix timestamp, or a duration in seconds.
 	const resetNumber = toInt(header)
 	if (resetNumber && resetNumber > 1_000_000_000 /* Sometime in 2001 */)
-		return converters['unix'](resetNumber)
+		return converters.unix(resetNumber)
 
-	return converters['seconds'](resetNumber)
+	return converters.seconds(resetNumber)
 }
 
 /**

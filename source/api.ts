@@ -4,7 +4,7 @@
 import type {
 	ResponseObject,
 	HeadersObject,
-	RateLimitInfo,
+	ParsedRateLimit,
 	ParserOptions,
 } from './types'
 import { getHeaderObject, getNonStandardHeaders } from './headers.js'
@@ -18,12 +18,12 @@ import { rateLimitSorter } from './utilities.js'
  * @param input {ResponseObject | HeadersObject} - The node/fetch-style response/headers object.
  * @param passedOptions {Partial<ParserOptions> | undefined} - The configuration for the parser.
  *
- * @returns {RateLimitInfo | undefined} - The rate limit information parsed from the headers.
+ * @returns {ParsedRateLimit | undefined} - The rate limit information parsed from the headers.
  */
 export const getRateLimit = (
 	input: ResponseObject | HeadersObject,
 	passedOptions?: Partial<ParserOptions>,
-): RateLimitInfo | undefined => {
+): ParsedRateLimit | undefined => {
 	const rateLimits = getRateLimits(input, passedOptions)
 	return rateLimits.length === 0 ? undefined : rateLimits[0]
 }
@@ -35,12 +35,12 @@ export const getRateLimit = (
  * @param input {ResponseObject | HeadersObject} - The node/fetch-style response/headers object.
  * @param passedOptions {Partial<ParserOptions> | undefined} - The configuration for the parser.
  *
- * @returns {RateLimitInfo[]} - The rate limit information parsed from the headers.
+ * @returns {ParsedRateLimit[]} - The rate limit information parsed from the headers.
  */
 export const getRateLimits = (
 	input: ResponseObject | HeadersObject,
 	passedOptions?: Partial<ParserOptions>,
-): RateLimitInfo[] => {
+): ParsedRateLimit[] => {
 	// Default to no configuration, and get the headers object from the input.
 	const options = passedOptions ?? {}
 	const headers = getHeaderObject(input)
