@@ -5,4 +5,8 @@
 export * from './types.js'
 
 // Export the public API as named exports too.
-export { getRateLimit, getRateLimits } from './parser.js'
+export {
+	getRateLimit,
+	getRateLimits,
+	getRateLimit as parseRateLimit,
+} from './parser.js'
