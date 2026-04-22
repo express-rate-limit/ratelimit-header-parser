@@ -1,5 +1,5 @@
 {
-	"preset": "ts-jest/presets/default-esm",
+	"preset": "ts-jest",
 	"collectCoverage": true,
 	"collectCoverageFrom": ["source/**/*.ts"],
 	"testTimeout": 30000,

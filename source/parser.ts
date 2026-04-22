@@ -1,18 +1,46 @@
 // /source/ratelimit-header-parser.ts
 // The parser and associated functions.
 
+import {
+	parseList,
+	type List,
+	type InnerList,
+	type Item,
+} from 'structured-headers'
 import type {
 	ResponseObject,
 	HeadersObject,
 	RateLimitInfo,
 	ParserOptions,
-} from './types'
+} from './types.js'
 import {
 	secondsToDate,
 	toInt,
 	getHeader,
 	toIntOrUndefined,
 } from './utilities.js'
+
+// For parsing the RFC9651 structured fields used in draft 7+ of the standard
+
+/**
+ * Attempts to parse a header value as a Structured Field (SF) List.
+ * Falls back to legacy parsing if SF parsing fails.
+ * @param {string | undefined} headerValue
+ * @returns {any | undefined}
+ */
+function parseStructuredField(
+	headerValue: string | undefined,
+): List | undefined {
+	if (!headerValue || typeof headerValue !== 'string') return undefined
+	try {
+		// Try parsing as a Structured Field List
+		// structured-headers expects a Buffer or string
+		return parseList(headerValue)
+	} catch {
+		// Parsing failed, fallback to legacy logic
+		return undefined
+	}
+}
 
 /**
  * The following links might be referred to in the below lines of code:
@@ -46,23 +74,36 @@ export const getRateLimit = (
 }
 
 /**
- * Function to sort an array of RateLimitInfo[] by remaining, then by limit, whith lower values coming first, and undefined remaining values coming after defined ones
+ * Function to sort an array of RateLimitInfo[] by remaining, then by limit, with lower values coming first, and undefined remaining values coming after defined ones
  * @param a {RateLimitInfo}
  * @param b {RateLimitInfo}
  * @returns number
  */
 export function remainingSortFn(a: RateLimitInfo, b: RateLimitInfo): number {
-	const aDefined = a.remaining !== undefined
-	const bDefined = b.remaining !== undefined
 	if (a.remaining === b.remaining) {
-		return a.limit - b.limit
+		if (a.limit && b.limit) {
+			return a.limit - b.limit
+		}
+
+		if (a.limit && !b.limit) {
+			return -1
+		}
+
+		if (!a.limit && b.limit) {
+			return 1
+		}
+
+		return 0
 	}
 
-	if (aDefined && !bDefined) {
+	const aRemaining = a.remaining !== undefined
+	const bRemaining = b.remaining !== undefined
+
+	if (aRemaining && !bRemaining) {
 		return -1
 	}
 
-	if (!aDefined && bDefined) {
+	if (!aRemaining && bRemaining) {
 		return 1
 	}
 
@@ -113,26 +154,25 @@ export const getRateLimits = (
 		) as HeadersObject
 	}
 
-	// If the header is a combined header, parse it according to the 7th draft of
-	// the IETF spec.
-	const draft7Header = getHeader(headers, 'ratelimit')
-	const draft7RateLimit = draft7Header
-		? parseDraft7Header(draft7Header)
+	// Structured Fields (SF) parsing for RateLimit and RateLimit-Policy following the latest drafts of the standard
+	const ratelimitHeader = getHeader(headers, 'ratelimit')
+	const policyHeader = getHeader(headers, 'ratelimit-policy')
+
+	const rateLimits = parseDraft8Plus(ratelimitHeader, policyHeader)
+
+	// If the header is a combined header, parse it according to the 7th draft of the IETF spec.
+	const draft7RateLimit = ratelimitHeader
+		? parseDraft7Header(ratelimitHeader)
 		: undefined
+	if (draft7RateLimit) rateLimits.push(draft7RateLimit)
 
 	// Find the type of headers sent by the server, e.g., `X-RateLimit-`, `RateLimit-`, etc.
 	const prefixes = findPrefixes(headers)
-	if (prefixes.length === 0) return []
 
-	// Parse each of the rate limit headers found.
-	const potentialRateLimits = [draft7RateLimit]
-	for (const prefix of prefixes)
-		potentialRateLimits.push(parseHeaders(headers, options, prefix))
-
-	// Filter out undefined rate limits.
-	const rateLimits = potentialRateLimits.filter(
-		(info) => info !== undefined,
-	) as RateLimitInfo[]
+	for (const prefix of prefixes) {
+		const legacy = parseHeaders(headers, options, prefix)
+		if (legacy) rateLimits.push(legacy)
+	}
 
 	// Sort so that the limit with the lowest remaining value comes first
 	rateLimits.sort(remainingSortFn)
@@ -242,18 +282,126 @@ const reReset = /reset\s*=\s*(\d+)/i
  *
  * @returns {RateLimitInfo} - The normalised rate limit info.
  */
-export const parseDraft7Header = (header: string): RateLimitInfo => {
+export const parseDraft7Header = (
+	header: string,
+): RateLimitInfo | undefined => {
 	const limit = toInt(reLimit.exec(header)?.[1])
 	const remaining = toIntOrUndefined(reRemaining.exec(header)?.[1]) // Optional per https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-07#name-ratelimit
 	const resetSeconds = toInt(reReset.exec(header)?.[1])
 	const reset = secondsToDate(resetSeconds)
 
-	return {
-		limit,
-		used: typeof remaining === 'number' ? limit - remaining : undefined,
-		remaining,
-		reset,
+	if (limit)
+		return {
+			limit,
+			used: typeof remaining === 'number' ? limit - remaining : undefined,
+			remaining,
+			reset,
+		}
+	return undefined
+}
+
+/**
+ * Extracts RateLimitInfo from a structured-headers parsed item.
+ * @param {any} item - The parsed SF item (array: [identifier, params])
+ * @param {string} headerType - 'ratelimit' or 'ratelimit-policy'
+ * @returns {RateLimitInfo | undefined}
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention
+function extractSFRateLimit(item: InnerList | Item): RateLimitInfo | undefined {
+	if (!Array.isArray(item) || item.length < 2) return undefined
+	const identifier = typeof item[0] === 'string' ? item[0] : undefined
+	const parameters = item[1]
+	if (!(parameters instanceof Map)) return undefined
+	const result: Partial<RateLimitInfo> = { identifier }
+	// Drafts 8-10
+	const r = parameters.get('r') // Remaining
+	if (typeof r === 'number') {
+		result.remaining = r
 	}
+
+	const t = parameters.get('t') // Time
+	if (typeof t === 'number') {
+		result.reset = secondsToDate(t)
+	}
+
+	// Drafts 11+ (expected)
+	const a = parameters.get('a') // Avalialble
+	if (typeof a === 'number') {
+		result.remaining = a
+	}
+
+	const w = parameters.get('w') // Window
+	if (typeof w === 'number') {
+		result.reset = secondsToDate(w)
+	}
+
+	return result
+}
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+function extractSFPolicy(item: InnerList | Item): RateLimitInfo | undefined {
+	if (!Array.isArray(item) || item.length < 2) return undefined
+	const identifier = typeof item[0] === 'string' ? item[0] : undefined
+	const parameters = item[1]
+	if (!(parameters instanceof Map)) return undefined
+	const result: Partial<RateLimitInfo> = { identifier }
+	const q = parameters.get('q') // Quota
+	if (typeof q === 'number') {
+		result.limit = q
+	}
+
+	return result
+}
+
+/**
+ * Parses draft 8+ style `RateLimit` and `RateLimit-Policy` headers, and combines them into RateLimitInfo objects.
+ *
+ */
+export const parseDraft8Plus = (
+	sfRateLimitHeader?: string,
+	sfPolicyHeader?: string,
+): RateLimitInfo[] => {
+	// Structured Fields (SF) parsing for RateLimit and RateLimit-Policy
+	// Parse SF RateLimit and Policy headers separately, then combine by identifier
+	const sfRateLimits: RateLimitInfo[] = []
+	const sfPolicies: RateLimitInfo[] = []
+
+	const sfRateLimitList = parseStructuredField(sfRateLimitHeader)
+	if (sfRateLimitList && Array.isArray(sfRateLimitList)) {
+		for (const item of sfRateLimitList) {
+			const info = extractSFRateLimit(item)
+			if (info?.identifier) sfRateLimits.push(info)
+		}
+	}
+
+	const sfPolicyList = parseStructuredField(sfPolicyHeader)
+	if (sfPolicyList && Array.isArray(sfPolicyList)) {
+		for (const item of sfPolicyList) {
+			const info = extractSFPolicy(item)
+			if (info?.identifier) sfPolicies.push(info)
+		}
+	}
+
+	const rateLimits: RateLimitInfo[] = []
+	for (const rate of sfRateLimits) {
+		const match = sfPolicies.find((p) => p.identifier === rate.identifier)
+		if (match) {
+			// Combine SF RateLimit and Policy by identifier
+			rateLimits.push({ ...match, ...rate })
+		} else {
+			// ...or add the policy on it's own
+			rateLimits.push(rate)
+		}
+	}
+
+	// Also, add any policies that didn't have a matching RateLimit (shouldn't happen)
+	for (const policy of sfPolicies) {
+		if (!rateLimits.some((r) => r.identifier === policy.identifier)) {
+			rateLimits.push(policy)
+		}
+	}
+
+	return rateLimits
 }
 
 /**

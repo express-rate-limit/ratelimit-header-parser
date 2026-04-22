@@ -47,7 +47,7 @@ export const toIntOrUndefined = (
  * node/fetch-style header object.
  *
  * @param headers {HeadersObject} - The headers in the response.
- * @param name {string} - The name of the header to return.
+ * @param name {string} - The name of the header to return. Must be lower case.
  *
  * @returns {string | undefined} - The contents of the header.
  */

@@ -23,10 +23,16 @@ export type HeadersObject =
  */
 export type RateLimitInfo = {
 	/**
+	 * The identifier for this rate limit, required for the standard headers draft 8+
+	 * May be any arbitrary string, or undefined for earlier versions.
+	 */
+	identifier?: string
+
+	/**
 	 * The max number of requests one can make to that endpoint in the stipulated
 	 * window.
 	 */
-	limit: number
+	limit?: number
 
 	/**
 	 * The number of requests already made to that endpoint.
