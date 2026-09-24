@@ -11,6 +11,7 @@ import type {
 	ResponseObject,
 	HeadersObject,
 	RateLimitInfo,
+	RateLimitQuotaUnit,
 	ParserOptions,
 } from './types.js'
 import {
@@ -176,6 +177,14 @@ export const getRateLimits = (
 		if (legacy) rateLimits.push(legacy)
 	}
 
+	// Add the retry-after info from the Retry-After header, if present.
+	const retryAfter = toIntOrUndefined(getHeader(headers, 'retry-after'))
+	if (retryAfter !== undefined) {
+		for (const rateLimit of rateLimits) {
+			rateLimit.retryAfter = retryAfter
+		}
+	}
+
 	// Sort so that the limit with the lowest remaining value comes first
 	rateLimits.sort(remainingSortFn)
 
@@ -331,9 +340,11 @@ function extractSFRateLimit(item: InnerList | Item): RateLimitInfo | undefined {
 		result.remaining = a
 	}
 
-	const w = parameters.get('w') // Window
-	if (typeof w === 'number') {
-		result.reset = secondsToDate(w)
+	const pk = parameters.get('pk') // Partition key
+	if (typeof pk === 'string') {
+		result.partitionKey = pk
+	} else if (pk instanceof ArrayBuffer) {
+		result.partitionKey = new TextDecoder().decode(pk)
 	}
 
 	return result
@@ -349,6 +360,23 @@ function extractSFPolicy(item: InnerList | Item): RateLimitInfo | undefined {
 	const q = parameters.get('q') // Quota
 	if (typeof q === 'number') {
 		result.limit = q
+	}
+
+	const w = parameters.get('w') // Window
+	if (typeof w === 'number' && w > 0) {
+		result.window = w
+	}
+
+	const qu = parameters.get('qu') // Quota unit
+	if (typeof qu === 'string') {
+		result.unit = qu as RateLimitQuotaUnit
+	}
+
+	const pk = parameters.get('pk') // Partition key
+	if (typeof pk === 'string') {
+		result.partitionKey = pk
+	} else if (pk instanceof ArrayBuffer) {
+		result.partitionKey = new TextDecoder().decode(pk)
 	}
 
 	return result

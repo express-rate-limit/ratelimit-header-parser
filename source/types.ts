@@ -18,6 +18,15 @@ export type HeadersObject =
 	| { [key: string]: string | string[] }
 
 /**
+ * The units in which a rate limit quota may be expressed, per the updated
+ * `RateLimit-Policy` draft.
+ */
+export type RateLimitQuotaUnit =
+	| 'requests'
+	| 'content-bytes'
+	| 'concurrent-requests'
+
+/**
  * The rate limit information gleaned from the response/headers object passed
  * to the parser.
  */
@@ -49,7 +58,29 @@ export type RateLimitInfo = {
 	 */
 	reset?: Date
 
-	// TODO: policy
+	/**
+	 * The period of time, in seconds, that the rate limit window lasts. From the
+	 * `w` parameter of a `RateLimit-Policy` header.
+	 */
+	window?: number
+
+	/**
+	 * The unit the quota is expressed in. Defaults to `requests` if not specified.
+	 */
+	unit?: RateLimitQuotaUnit
+
+	/**
+	 * The partition this rate limit applies to, from the `pk` parameter. May be
+	 * an arbitrary string identifying a scope (e.g. a user) or undefined if not
+	 * specified.
+	 */
+	partitionKey?: string
+
+	/**
+	 * The number of seconds after which the client may retry, from a
+	 * `RateLimit-Retry-After` header.
+	 */
+	retryAfter?: number
 }
 
 /**

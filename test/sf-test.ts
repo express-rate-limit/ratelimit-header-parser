@@ -50,7 +50,7 @@ describe('structured fields (SF) parsing', () => {
 			reset: expect.any(Date),
 		})
 	})
-	test('does not also parse a valid SF header as draft 7', () => {
+test('does not also parse a valid SF header as draft 7', () => {
 		// A quoted SF identifier that happens to contain draft-7-style tokens
 		// should not be fed to the draft 7 parser as well.
 		const headers = {
@@ -60,5 +60,61 @@ describe('structured fields (SF) parsing', () => {
 		expect(infos).toHaveLength(1)
 		expect(infos[0]).toMatchObject({ remaining: 1 })
 		expect(infos[0].limit).toBeUndefined()
+	})
+
+	test('parses policy window, quota unit, and partition key', () => {
+		// RateLimit-Policy: "default";q=100;w=60;qu="content-bytes", "user";q=5;w=3600;pk=:QXBwLTk5OQ==:
+		const headers = {
+			'ratelimit-policy':
+				'"default";q=100;w=60;qu="content-bytes", "user";q=5;w=3600;pk=:QXBwLTk5OQ==:',
+		}
+		const infos = getRateLimits(headers)
+		const defaults = infos.find((i) => i.identifier === 'default')
+		const user = infos.find((i) => i.identifier === 'user')
+		expect(defaults).toMatchObject({
+			limit: 100,
+			window: 60,
+			unit: 'content-bytes',
+		})
+		expect(user).toMatchObject({
+			limit: 5,
+			window: 3600,
+			partitionKey: 'App-999',
+		})
+	})
+
+	test('combines RateLimit-Policy with RateLimit by identifier', () => {
+		// RateLimit-Policy: "minute";q=100;w=60
+		// RateLimit: "minute";r=42;t=30
+		const headers = {
+			'ratelimit-policy': '"minute";q=100;w=60',
+			ratelimit: '"minute";r=42;t=30',
+		}
+		const info = getRateLimit(headers)
+		expect(info).toMatchObject({
+			identifier: 'minute',
+			limit: 100,
+			window: 60,
+			remaining: 42,
+			reset: expect.any(Date),
+		})
+	})
+
+	test('parses RateLimit partition key', () => {
+		// RateLimit: "user";r=5;t=30;pk=:QXBwLTk5OQ==:
+		const headers = {
+			ratelimit: '"user";r=5;t=30;pk=:QXBwLTk5OQ==:',
+		}
+		const info = getRateLimit(headers)
+		expect(info).toMatchObject({ partitionKey: 'App-999' })
+	})
+
+	test('parses Retry-After header', () => {
+		const headers = {
+			ratelimit: '"default";r=0;t=60',
+			'retry-after': '35',
+		}
+		const info = getRateLimit(headers)
+		expect(info).toMatchObject({ retryAfter: 35 })
 	})
 })
