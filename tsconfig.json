@@ -3,6 +3,8 @@
 	"exclude": ["node_modules/"],
 	"extends": "@express-rate-limit/tsconfig",
 	"compilerOptions": {
-		"target": "ES2019"
+		"target": "es2021",
+		"module": "nodenext",
+		"moduleResolution": "nodenext"
 	}
 }

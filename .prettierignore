@@ -1,3 +1,6 @@
+# /.prettierignore
+# Tells Prettier to ignore certain files
+
 package.json
 package-lock.json
 
