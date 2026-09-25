@@ -177,8 +177,11 @@ export const getRateLimits = (
 		if (legacy) rateLimits.push(legacy)
 	}
 
-	// Add the retry-after info from the Retry-After header, if present.
-	const retryAfter = toIntOrUndefined(getHeader(headers, 'retry-after'))
+	// Add the retry-after info from the RateLimit-Retry-After/Retry-After headers, if present.
+	const retryAfter = toIntOrUndefined(
+		getHeader(headers, 'ratelimit-retry-after') ??
+			getHeader(headers, 'retry-after'),
+	)
 	if (retryAfter !== undefined) {
 		for (const rateLimit of rateLimits) {
 			rateLimit.retryAfter = retryAfter
@@ -228,7 +231,9 @@ const parseHeaders = (
 	/* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
 	// If the reset header is not set, fallback to the retry-after header.
-	const retryAfter = getHeader(headers, 'retry-after')
+	const retryAfter =
+		getHeader(headers, 'ratelimit-retry-after') ??
+		getHeader(headers, 'retry-after')
 	if (!reset && retryAfter) reset = parseResetUnix(retryAfter)
 
 	return {
