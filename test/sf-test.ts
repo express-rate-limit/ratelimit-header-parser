@@ -50,4 +50,15 @@ describe('structured fields (SF) parsing', () => {
 			reset: expect.any(Date),
 		})
 	})
+	test('does not also parse a valid SF header as draft 7', () => {
+		// A quoted SF identifier that happens to contain draft-7-style tokens
+		// should not be fed to the draft 7 parser as well.
+		const headers = {
+			ratelimit: '"limit=100";r=1;t=5',
+		}
+		const infos = getRateLimits(headers)
+		expect(infos).toHaveLength(1)
+		expect(infos[0]).toMatchObject({ remaining: 1 })
+		expect(infos[0].limit).toBeUndefined()
+	})
 })

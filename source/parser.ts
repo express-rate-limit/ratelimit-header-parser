@@ -160,11 +160,13 @@ export const getRateLimits = (
 
 	const rateLimits = parseDraft8Plus(ratelimitHeader, policyHeader)
 
-	// If the header is a combined header, parse it according to the 7th draft of the IETF spec.
-	const draft7RateLimit = ratelimitHeader
-		? parseDraft7Header(ratelimitHeader)
-		: undefined
-	if (draft7RateLimit) rateLimits.push(draft7RateLimit)
+	// The `RateLimit` header may be either the draft 8+ SF format or the draft 7
+	// combined format; only feed it to the draft 7 parser if it did not parse as
+	// a Structured Field, otherwise the two parsers could both match the header.
+	if (ratelimitHeader && !parseStructuredField(ratelimitHeader)) {
+		const draft7RateLimit = parseDraft7Header(ratelimitHeader)
+		if (draft7RateLimit) rateLimits.push(draft7RateLimit)
+	}
 
 	// Find the type of headers sent by the server, e.g., `X-RateLimit-`, `RateLimit-`, etc.
 	const prefixes = findPrefixes(headers)
@@ -302,8 +304,7 @@ export const parseDraft7Header = (
 
 /**
  * Extracts RateLimitInfo from a structured-headers parsed item.
- * @param {any} item - The parsed SF item (array: [identifier, params])
- * @param {string} headerType - 'ratelimit' or 'ratelimit-policy'
+ * @param {InnerList | Item} item - The parsed SF item (array: [identifier, params])
  * @returns {RateLimitInfo | undefined}
  */
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -367,7 +368,7 @@ export const parseDraft8Plus = (
 	const sfPolicies: RateLimitInfo[] = []
 
 	const sfRateLimitList = parseStructuredField(sfRateLimitHeader)
-	if (sfRateLimitList && Array.isArray(sfRateLimitList)) {
+	if (sfRateLimitList) {
 		for (const item of sfRateLimitList) {
 			const info = extractSFRateLimit(item)
 			if (info?.identifier) sfRateLimits.push(info)
@@ -375,7 +376,7 @@ export const parseDraft8Plus = (
 	}
 
 	const sfPolicyList = parseStructuredField(sfPolicyHeader)
-	if (sfPolicyList && Array.isArray(sfPolicyList)) {
+	if (sfPolicyList) {
 		for (const item of sfPolicyList) {
 			const info = extractSFPolicy(item)
 			if (info?.identifier) sfPolicies.push(info)
