@@ -82,17 +82,15 @@ export const getRateLimit = (
  */
 export function remainingSortFn(a: RateLimitInfo, b: RateLimitInfo): number {
 	if (a.remaining === b.remaining) {
-		if (a.limit && b.limit) {
-			return a.limit - b.limit
-		}
+		// Treat `NaN` as a missing limit, but a valid zero limit as a real one.
+		const aLimit = Number.isNaN(a.limit) ? undefined : a.limit
+		const bLimit = Number.isNaN(b.limit) ? undefined : b.limit
 
-		if (a.limit && !b.limit) {
-			return -1
-		}
+		if (aLimit !== undefined && bLimit !== undefined) return aLimit - bLimit
 
-		if (!a.limit && b.limit) {
-			return 1
-		}
+		if (aLimit !== undefined) return -1
+
+		if (bLimit !== undefined) return 1
 
 		return 0
 	}
@@ -303,17 +301,19 @@ export const parseDraft7Header = (
 ): RateLimitInfo | undefined => {
 	const limit = toInt(reLimit.exec(header)?.[1])
 	const remaining = toIntOrUndefined(reRemaining.exec(header)?.[1]) // Optional per https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-07#name-ratelimit
-	const resetSeconds = toInt(reReset.exec(header)?.[1])
-	const reset = secondsToDate(resetSeconds)
+	const resetSeconds = toIntOrUndefined(reReset.exec(header)?.[1])
+	// Draft 7's `reset` value is delay-seconds; leave it undefined when absent
+	// rather than producing an Invalid Date.
+	const reset =
+		resetSeconds === undefined ? undefined : secondsToDate(resetSeconds)
 
-	if (limit)
-		return {
-			limit,
-			used: typeof remaining === 'number' ? limit - remaining : undefined,
-			remaining,
-			reset,
-		}
-	return undefined
+	if (Number.isNaN(limit)) return undefined
+	return {
+		limit,
+		used: typeof remaining === 'number' ? limit - remaining : undefined,
+		remaining,
+		reset,
+	}
 }
 
 /**
@@ -362,12 +362,30 @@ function extractSFPolicy(item: InnerList | Item): RateLimitInfo | undefined {
 	const parameters = item[1]
 	if (!(parameters instanceof Map)) return undefined
 	const result: Partial<RateLimitInfo> = { identifier }
-	const q = parameters.get('q') // Quota
-	if (typeof q === 'number') {
-		result.limit = q
+	// Draft 7 policy items are bare Integers where the member value *is* the
+	// quota (the service limit), e.g. `100;w=60`. The version of the standard is
+	// inferred structurally: a bare Integer member can only be a draft 7 policy
+	// (draft 8+ policies are string-identified members). Lenient by default,
+	// so we keep the quota even when `w` (§2.1 REQUIRED) is missing, and only
+	// adopt `w` when it is a non-negative Integer.
+	if (
+		typeof item[0] === 'number' &&
+		Number.isInteger(item[0]) &&
+		item[0] >= 0
+	) {
+		result.limit = item[0]
+		const w = parameters.get('w')
+		if (typeof w === 'number' && Number.isInteger(w) && w >= 0) {
+			result.window = w
+		}
+	} else {
+		const q = parameters.get('q') // Quota (drafts 8+)
+		if (typeof q === 'number') {
+			result.limit = q
+		}
 	}
 
-	const w = parameters.get('w') // Window
+	const w = parameters.get('w') // Window (drafts 8+)
 	if (typeof w === 'number' && w > 0) {
 		result.window = w
 	}
@@ -412,16 +430,27 @@ export const parseDraft8Plus = (
 	if (sfPolicyList) {
 		for (const item of sfPolicyList) {
 			const info = extractSFPolicy(item)
-			if (info?.identifier) sfPolicies.push(info)
+			// Draft 7 policies are integer items, so they don't have an
+			// identifier — keep them by their quota (`limit`) instead.
+			if (info && (info.identifier !== undefined || info.limit !== undefined))
+				sfPolicies.push(info)
 		}
 	}
 
 	const rateLimits: RateLimitInfo[] = []
+	// Track which policies have already been combined with a RateLimit, so that
+	// multiple identifier-less (draft 7) policies are all kept, e.g.
+	// `RateLimit-Policy: 1000;w=3600, 5000;w=86400`.
+	const consumedPolicies = new Set<number>()
 	for (const rate of sfRateLimits) {
-		const match = sfPolicies.find((p) => p.identifier === rate.identifier)
-		if (match) {
+		const index = sfPolicies.findIndex(
+			(policy, i) =>
+				!consumedPolicies.has(i) && policy.identifier === rate.identifier,
+		)
+		if (index >= 0) {
 			// Combine SF RateLimit and Policy by identifier
-			rateLimits.push({ ...match, ...rate })
+			consumedPolicies.add(index)
+			rateLimits.push({ ...sfPolicies[index], ...rate })
 		} else {
 			// ...or add the policy on it's own
 			rateLimits.push(rate)
@@ -429,10 +458,8 @@ export const parseDraft8Plus = (
 	}
 
 	// Also, add any policies that didn't have a matching RateLimit (shouldn't happen)
-	for (const policy of sfPolicies) {
-		if (!rateLimits.some((r) => r.identifier === policy.identifier)) {
-			rateLimits.push(policy)
-		}
+	for (const [index, policy] of sfPolicies.entries()) {
+		if (!consumedPolicies.has(index)) rateLimits.push(policy)
 	}
 
 	return rateLimits
