@@ -50,7 +50,7 @@ describe('structured fields (SF) parsing', () => {
 			reset: expect.any(Date),
 		})
 	})
-test('does not also parse a valid SF header as draft 7', () => {
+	test('does not also parse a valid SF header as draft 7', () => {
 		// A quoted SF identifier that happens to contain draft-7-style tokens
 		// should not be fed to the draft 7 parser as well.
 		const headers = {
@@ -113,6 +113,25 @@ test('does not also parse a valid SF header as draft 7', () => {
 		const headers = {
 			ratelimit: '"default";r=0;t=60',
 			'retry-after': '35',
+		}
+		const info = getRateLimit(headers)
+		expect(info).toMatchObject({ retryAfter: 35 })
+	})
+
+	test('parses RateLimit-Retry-After header', () => {
+		const headers = {
+			ratelimit: '"default";r=0;t=60',
+			'ratelimit-retry-after': '35',
+		}
+		const info = getRateLimit(headers)
+		expect(info).toMatchObject({ retryAfter: 35 })
+	})
+
+	test('RateLimit-Retry-After takes precedence over Retry-After', () => {
+		const headers = {
+			ratelimit: '"default";r=0;t=60',
+			'ratelimit-retry-after': '35',
+			'retry-after': '120',
 		}
 		const info = getRateLimit(headers)
 		expect(info).toMatchObject({ retryAfter: 35 })
