@@ -32,35 +32,35 @@ export type RateLimitQuotaUnit =
  */
 export type RateLimitInfo = {
 	/**
-	 * The identifier for this rate limit, required for the standard headers draft 8+
+	 * The identifier for this rate limit, set by the remote server.
+	 * Required for the standard headers draft 8+; used to combine rate limit details across Ratelimit & Ratelimit-Policy headers.
 	 * May be any arbitrary string, or undefined for earlier versions.
 	 */
 	identifier?: string
 
 	/**
-	 * The max number of requests one can make to that endpoint in the stipulated
+	 * The max number of requests (or whatever the specified unit is) that may be made to the endpoint during the time
 	 * window.
 	 */
 	limit?: number
 
 	/**
-	 * The number of requests already made to that endpoint.
+	 * The number of requests/etc. already made to that endpoint.
 	 */
 	used?: number
 
 	/**
-	 * The number of requests that can be made before reaching the rate limit.
+	 * The number of requests/etc. that can be made before reaching the rate limit.
 	 */
 	remaining?: number
 
 	/**
-	 * The timestamp at which the window resets, and one's hit count is set to zero.
+	 * The time when the window will reset, and used & remaining counts will be reset.
 	 */
 	reset?: Date
 
 	/**
-	 * The period of time, in seconds, that the rate limit window lasts. From the
-	 * `w` parameter of a `RateLimit-Policy` header.
+	 * The period of time, in seconds, that the rate limit window lasts.
 	 */
 	window?: number
 
@@ -70,15 +70,14 @@ export type RateLimitInfo = {
 	unit?: RateLimitQuotaUnit
 
 	/**
-	 * The partition this rate limit applies to, from the `pk` parameter. May be
-	 * an arbitrary string identifying a scope (e.g. a user) or undefined if not
-	 * specified.
+	 * Identifier of what the limit is being applied to - e.g. IP address, username, API key, etc.
+	 * Optional, set by the remote server.
+	 * (Note: the field is base64 encoded in the header, but decoded before being exposed here.)
 	 */
 	partitionKey?: string
 
 	/**
-	 * The number of seconds after which the client may retry, from a
-	 * `RateLimit-Retry-After` header.
+	 * The number of seconds to wait before retrying the request.
 	 */
 	retryAfter?: number
 }

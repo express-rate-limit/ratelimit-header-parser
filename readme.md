@@ -10,12 +10,16 @@
 </div>
 
 This library parses `RateLimit` headers of various forms into a normalized
-format. It supports the combined format specified in
-[draft 7](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-07)
-of the
+format. It supports the policy/limit split headers from drafts 8+ of the the
 [IETF Rate Limit Headers standard](https://github.com/ietf-wg-httpapi/ratelimit-headers),
+the combined format specified in
+[draft 7](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers-07),
 the uncombined `RateLimit-*` format of earlier drafts, traditional
-`X-RateLimit-*` headers, and a few other formats.
+`X-RateLimit-*` headers, as well as proprietary formats from Amazon, Twitter,
+Imgur, and others.
+
+It's currently tested in node.js and deno, and should also work in browsers,
+React Native, and other JavaScript environments.
 
 ## Installation
 
@@ -40,37 +44,16 @@ From Github Releases:
 Replace `{version}` with the version of the package that you want to your, e.g.:
 `1.0.0`.
 
-## Usage
-
-### Importing
-
-This library is provided in ESM as well as CJS forms, and works with both
-Javascript and Typescript projects.
-
-**This package requires you to use Node 16 or above.**
-
-Import it in a CommonJS project (`type: commonjs` or no `type` field in
-`package.json`) as follows:
-
-```ts
-const { rateLimit } = require('express-rate-limit')
-```
-
-Import it in a ESM project (`type: module` in `package.json`) as follows:
-
-```ts
-import { rateLimit } from 'express-rate-limit'
-```
-
-### Examples
+## Usage Examples
 
 ```ts
 import { getRateLimit } from 'ratelimit-header-parser'
+// or const { getRateLimit } = require('ratelimit-header-parser')
 
 const response = await fetch('https://api.github.com/orgs/express-rate-limit')
 console.log('github ratelimit:', getRateLimit(response))
 
-// > github ratelimit: { limit: 60, used: 1, remaining: 59, reset: 2023-08-25T04:16:48.000Z }
+// > github ratelimit: { limit: 60, used: 3, remaining: 57, reset: 2026-09-28T19:14:49.000Z }
 ```
 
 For more examples, take a look at the [`examples/`](examples/) folder.
@@ -85,14 +68,60 @@ headers. If multiple ratelimits are found, it chooses the one with the lowest
 remaining value.
 
 Returns an object with the following fields, or `undefined` if it does not find
-any rate-limit headers.
+any rate-limit headers. All fields are optional, but `limit`, `remaining`, and
+`reset` are usually present.
 
 ```ts
-type RateLimitInfo = {
-	limit: number
-	used: number | undefined
-	remaining: number | undefined
-	reset: Date | undefined
+RateLimitInfo = {
+	/**
+	 * The identifier for this rate limit, set by the remote server.
+	 * Required for the standard headers draft 8+; used to combine rate limit details across Ratelimit & Ratelimit-Policy headers.
+	 * May be any arbitrary string, or undefined for earlier versions.
+	 */
+	identifier?: string
+
+	/**
+	 * The max number of requests (or whatever the specified unit is) that may be made to the endpoint during the time
+	 * window.
+	 */
+	limit?: number
+
+	/**
+	 * The number of requests/etc. already made to that endpoint.
+	 */
+	used?: number
+
+	/**
+	 * The number of requests/etc. that can be made before reaching the rate limit.
+	 */
+	remaining?: number
+
+	/**
+	 * The time when the window will reset, and used & remaining counts will be reset.
+	 */
+	reset?: Date
+
+	/**
+	 * The period of time, in seconds, that the rate limit window lasts.
+	 */
+	window?: number
+
+	/**
+	 * The unit the quota is expressed in. Defaults to `requests` if not specified.
+	 */
+	unit?: RateLimitQuotaUnit
+
+	/**
+	 * Identifier of what the limit is being applied to - e.g. IP address, username, API key, etc.
+	 * Set by the remote server.
+	 * (Note: the field is base64 encoded in the header, but decoded before being exposed here.)
+	 */
+	partitionKey?: string
+
+	/**
+	 * The number of seconds after which the client may retry the request.
+	 */
+	retryAfter?: number
 }
 ```
 
@@ -119,7 +148,9 @@ type Options = {
 ### `getRateLimits(responseOrHeaders, [options]) => object[]`
 
 For APIs that may return multiple rate limits (e.g. per client & per end-user),
-this will parse all of them.
+this will parse and return all of them.
+
+Result is sorted so that the limit with the lowest remaining value comes first.
 
 Accepts the same inputs as `getRateLimit` and returns an array containing zero
 or more of the same `RateLimitInfo` objects that `getRateLimit` returns.
