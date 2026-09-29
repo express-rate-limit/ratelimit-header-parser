@@ -1,6 +1,6 @@
 {
   "name": "ratelimit-header-parser",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Parse `RateLimit` headers of various forms, including the combined form from draft 7 of the IETF standard, into a normalized format.",
   "author": "Nathan Friedly <https://www.nfriedly.com/>",
   "license": "MIT",
